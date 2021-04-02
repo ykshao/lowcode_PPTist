@@ -98,6 +98,17 @@
 
     <Divider />
 
+    <div class="row">
+      <div style="flex: 2;">画布尺寸：</div>
+      <Select style="flex: 3;" :value="viewportRatio" @change="value => updateViewportRatio(value)">
+        <SelectOption :value="0.5625">宽屏 16 : 9</SelectOption>
+        <SelectOption :value="0.625">宽屏 16 ：10</SelectOption>
+        <SelectOption :value="0.75">标准 4 ：3</SelectOption>
+      </Select>
+    </div>
+
+    <Divider />
+
     <div class="title">全局主题</div>
     <div class="row">
       <div style="flex: 2;">字体：</div>
@@ -202,8 +213,9 @@ export default defineComponent({
     const store = useStore()
     const slides = computed(() => store.state.slides)
     const theme = computed(() => store.state.theme)
-    const currentSlide = computed<Slide>(() => store.getters.currentSlide)
     const availableFonts = computed(() => store.state.availableFonts)
+    const viewportRatio = computed(() => store.state.viewportRatio)
+    const currentSlide = computed<Slide>(() => store.getters.currentSlide)
 
     const background = computed(() => {
       if (!currentSlide.value.background) {
@@ -313,6 +325,11 @@ export default defineComponent({
       addHistorySnapshot()
     }
 
+    // 设置画布尺寸（宽高比例）
+    const updateViewportRatio = (value: number) => {
+      store.commit(MutationTypes.SET_VIEWPORT_RATIO, value)
+    }
+
     return {
       availableFonts,
       background,
@@ -325,6 +342,8 @@ export default defineComponent({
       webFonts,
       updateTheme,
       applyThemeAllSlide,
+      viewportRatio,
+      updateViewportRatio,
     }
   },
 })

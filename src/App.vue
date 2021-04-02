@@ -20,6 +20,10 @@ export default defineComponent({
     const store = useStore()
     const screening = computed(() => store.state.screening)
 
+    if (process.env.NODE_ENV === 'production') {
+      window.onbeforeunload = () => false
+    }
+
     onMounted(() => {
       store.commit(MutationTypes.SET_AVAILABLE_FONTS)
       store.dispatch(ActionTypes.INIT_SNAPSHOT_DATABASE)

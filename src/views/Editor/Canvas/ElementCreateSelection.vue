@@ -29,7 +29,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, onMounted, reactive, ref } from 'vue'
-import { MutationTypes, useStore } from '@/store'
+import { useStore } from '@/store'
 
 export default defineComponent({
   name: 'element-create-selection',
@@ -38,8 +38,8 @@ export default defineComponent({
     const ctrlOrShiftKeyActive = computed<boolean>(() => store.getters.ctrlOrShiftKeyActive)
     const creatingElement = computed(() => store.state.creatingElement)
 
-    const start = ref<[number, number] | null>(null)
-    const end = ref<[number, number] | null>(null)
+    const start = ref<[number, number]>()
+    const end = ref<[number, number]>()
 
     const selectionRef = ref<HTMLElement>()
     const offset = reactive({
@@ -110,13 +110,37 @@ export default defineComponent({
 
         const minSize = 30
 
-        if (Math.abs(endPageX - startPageX) >= minSize || Math.abs(endPageY - startPageY) >= minSize) {
+        if (
+          creatingElement.value?.type === 'line' &&
+          (Math.abs(endPageX - startPageX) >= minSize || Math.abs(endPageY - startPageY) >= minSize)
+        ) {
           emit('created', {
             start: start.value,
             end: end.value,
           })
         }
-        else store.commit(MutationTypes.SET_CREATING_ELEMENT, null)
+        else if (
+          creatingElement.value?.type !== 'line' &&
+          (Math.abs(endPageX - startPageX) >= minSize && Math.abs(endPageY - startPageY) >= minSize)
+        ) {
+          emit('created', {
+            start: start.value,
+            end: end.value,
+          })
+        }
+        else {
+          const defaultSize = 200
+          const minX = Math.min(endPageX, startPageX)
+          const minY = Math.min(endPageY, startPageY)
+          const maxX = Math.max(endPageX, startPageX)
+          const maxY = Math.max(endPageY, startPageY)
+          const offsetX = maxX - minX >= minSize ? maxX - minX : defaultSize
+          const offsetY = maxY - minY >= minSize ? maxY - minY : defaultSize
+          emit('created', {
+            start: [minX, minY],
+            end: [minX + offsetX, minY + offsetY],
+          })
+        }
       }
     }
 

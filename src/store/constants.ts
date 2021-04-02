@@ -16,11 +16,13 @@ export const enum MutationTypes {
 
   // slides
   SET_THEME = 'setTheme',
+  SET_VIEWPORT_RATIO = 'setViewportRatio',
   SET_SLIDES = 'setSlides',
   ADD_SLIDE = 'addSlide',
   UPDATE_SLIDE = 'updateSlide',
   DELETE_SLIDE = 'deleteSlide',
   UPDATE_SLIDE_INDEX = 'updateSlideIndex',
+  UPDATE_SELECTED_SLIDES_INDEX = 'updateSelectedSlidesIndex',
   ADD_ELEMENT = 'addElement',
   UPDATE_ELEMENT = 'updateElement',
   REMOVE_ELEMENT_PROPS = 'removeElementProps',

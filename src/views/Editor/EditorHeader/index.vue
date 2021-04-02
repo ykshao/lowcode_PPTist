@@ -1,10 +1,8 @@
 <template>
   <div class="editor-header">
     <div class="left">
-      <Dropdown :trigger="['click']" @visibleChange="visible => editDropdownVisible = visible">
-        <div class="menu-item" :class="['dropdown-menu', { 'active': editDropdownVisible }]">
-          <IconEdit /> <span class="text">编辑</span>
-        </div>
+      <Dropdown :trigger="['click']">
+        <div class="menu-item"><IconEdit /> <span class="text">编辑</span></div>
         <template #overlay>
           <Menu>
             <MenuItem @click="undo()">撤销</MenuItem>
@@ -16,10 +14,8 @@
           </Menu>
         </template>
       </Dropdown>
-      <Dropdown :trigger="['click']" @visibleChange="visible => screenDropdownVisible = visible">
-        <div class="menu-item" :class="['dropdown-menu', { 'active': screenDropdownVisible }]">
-          <IconPpt /> <span class="text">演示</span>
-        </div>
+      <Dropdown :trigger="['click']">
+        <div class="menu-item"><IconPpt /> <span class="text">演示</span></div>
         <template #overlay>
           <Menu>
             <MenuItem @click="enterScreeningFromStart()">从头开始</MenuItem>
@@ -27,10 +23,8 @@
           </Menu>
         </template>
       </Dropdown>
-      <Dropdown :trigger="['click']" @visibleChange="visible => helpDropdownVisible = visible">
-        <div class="menu-item" :class="['dropdown-menu', { 'active': helpDropdownVisible }]">
-          <IconHelpcenter /> <span class="text">帮助</span>
-        </div>
+      <Dropdown :trigger="['click']">
+        <div class="menu-item"><IconHelpcenter /> <span class="text">帮助</span></div>
         <template #overlay>
           <Menu>
             <MenuItem @click="openDoc()">开发文档</MenuItem>
@@ -65,7 +59,6 @@
 <script lang="ts">
 import { computed, defineComponent, ref } from 'vue'
 import { MutationTypes, useStore } from '@/store'
-import { createRandomCode } from '@/utils/common'
 import useScreening from '@/hooks/useScreening'
 import useSlideHandler from '@/hooks/useSlideHandler'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
@@ -82,24 +75,12 @@ export default defineComponent({
     const store = useStore()
 
     const { enterScreening, enterScreeningFromStart } = useScreening()
-    const { createSlide, deleteSlide } = useSlideHandler()
+    const { createSlide, deleteSlide, resetSlides } = useSlideHandler()
     const { redo, undo } = useHistorySnapshot()
-
-    const editDropdownVisible = ref(false)
-    const screenDropdownVisible = ref(false)
-    const helpDropdownVisible = ref(false)
 
     const showGridLines = computed(() => store.state.showGridLines)
     const toggleGridLines = () => {
       store.commit(MutationTypes.SET_GRID_LINES_STATE, !showGridLines.value)
-    }
-
-    const resetSlides = () => {
-      store.commit(MutationTypes.SET_ACTIVE_ELEMENT_ID_LIST, [])
-      store.commit(MutationTypes.SET_SLIDES, [{
-        id: createRandomCode(),
-        elements: [],
-      }])
     }
 
     const openDoc = () => {
@@ -120,9 +101,6 @@ export default defineComponent({
       resetSlides,
       openDoc,
       hotkeyDrawerVisible,
-      editDropdownVisible,
-      screenDropdownVisible,
-      helpDropdownVisible,
     }
   },
 })
@@ -149,18 +127,15 @@ export default defineComponent({
   align-items: center;
   font-size: 13px;
   padding: 0 10px;
+  transition: background-color .2s;
   cursor: pointer;
+
+  &:hover {
+    background-color: $lightGray;
+  }
 
   .text {
     margin-left: 4px;
-  }
-}
-
-.dropdown-menu {
-  transition: background-color .2s;
-
-  &.active {
-    background-color: $lightGray;
   }
 }
 </style>

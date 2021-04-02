@@ -8,7 +8,6 @@
       fill="none" 
       :stroke="gridColor" 
       stroke-width="0.3" 
-      shape-rendering="crispEdges"
       stroke-dasharray="5"
     ></path>
   </SvgWrapper>
@@ -18,7 +17,7 @@
 import { defineComponent, computed } from 'vue'
 import tinycolor from 'tinycolor2'
 import { useStore } from '@/store'
-import { VIEWPORT_SIZE, VIEWPORT_ASPECT_RATIO } from '@/configs/canvas'
+import { VIEWPORT_SIZE } from '@/configs/canvas'
 import { SlideBackground } from '@/types/slides'
 
 export default defineComponent({
@@ -26,6 +25,7 @@ export default defineComponent({
   setup() {
     const store = useStore()
     const canvasScale = computed(() => store.state.canvasScale)
+    const viewportRatio = computed(() => store.state.viewportRatio)
     const background = computed<SlideBackground | undefined>(() => store.getters.currentSlide?.background)
 
     // 计算网格线的颜色，避免与背景的颜色太接近
@@ -47,14 +47,14 @@ export default defineComponent({
     // 计算网格路径
     const getPath = () => {
       const maxX = VIEWPORT_SIZE
-      const maxY = VIEWPORT_SIZE * VIEWPORT_ASPECT_RATIO
+      const maxY = VIEWPORT_SIZE * viewportRatio.value
 
       let path = ''
       for (let i = 0; i <= Math.floor(maxY / gridSize); i++) {
-        path += `M0 ${i * gridSize}, L${maxX} ${i * gridSize}`
+        path += `M0 ${i * gridSize} L${maxX} ${i * gridSize} `
       }
       for (let i = 0; i <= Math.floor(maxX / gridSize); i++) {
-        path += `M${i * gridSize} 0, L${i * gridSize} ${maxY}`
+        path += `M${i * gridSize} 0 L${i * gridSize} ${maxY} `
       }
       return path
     }
@@ -63,7 +63,7 @@ export default defineComponent({
       canvasScale,
       gridColor,
       width: VIEWPORT_SIZE,
-      height: VIEWPORT_SIZE * VIEWPORT_ASPECT_RATIO,
+      height: VIEWPORT_SIZE * viewportRatio.value,
       path: getPath(),
     }
   },
