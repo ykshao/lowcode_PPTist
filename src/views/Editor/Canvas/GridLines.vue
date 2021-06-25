@@ -30,16 +30,9 @@ export default defineComponent({
 
     // 计算网格线的颜色，避免与背景的颜色太接近
     const gridColor = computed(() => {
-      if (!background.value || background.value.type === 'image') return 'rgba(100, 100, 100, 0.5)'
-      const color = background.value.color
-      const rgba = tinycolor(color).toRgb()
-      const newRgba = {
-        r: rgba.r > 128 ? rgba.r - 128 : rgba.r + 127,
-        g: rgba.g > 128 ? rgba.g - 128 : rgba.g + 127,
-        b: rgba.b > 128 ? rgba.b - 128 : rgba.b + 127,
-        a: 0.5
-      }
-      return `rgba(${[newRgba.r, newRgba.g, newRgba.b, newRgba.a].join(',')})`
+      const bgColor = background.value?.color || '#fff'
+      const colorList = ['#000', '#fff']
+      return tinycolor.mostReadable(bgColor, colorList, { includeFallbackColors: true }).setAlpha(.5).toRgbString()
     })
 
     const gridSize = 50
@@ -74,11 +67,10 @@ export default defineComponent({
 .grid-lines {
   width: 100%;
   height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
   overflow: visible;
+  z-index: 999;
+  pointer-events: none;
+
+  @include absolute-0();
 }
 </style>

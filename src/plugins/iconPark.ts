@@ -54,23 +54,32 @@ import {
   BringToFrontOne,
   SentToBack,
   Github,
-  ChartLine,
-  ChartHistogram,
   ChartProportion,
-  PentagonOne,
+  ChartHistogram,
+  ChartHistogramOne,
+  ChartLine,
+  ChartLineArea,
+  ChartScatter,
+  ChartPie,
+  ChartRing,
   Text,
   Rotate,
-  LeftC,
-  RightC,
+  LeftTwo,
+  RightTwo,
   Platte,
   UpOne,
   DownOne,
+  Close,
   CloseSmall,
   Undo,
   Transform,
   Click,
   Theme,
   ArrowCircleLeft,
+  GraphicDesign,
+  Logout,
+  Erase,
+  Clear,
 } from '@icon-park/vue-next'
 
 export default {
@@ -78,8 +87,9 @@ export default {
     // 插入元素
     app.component('IconFontSize', FontSize)
     app.component('IconPicture', Picture)
-    app.component('IconPentagonOne', PentagonOne)
+    app.component('IconGraphicDesign', GraphicDesign)
     app.component('IconConnection', Connection)
+    app.component('IconChartProportion', ChartProportion)
     app.component('IconInsertTable', InsertTable)
 
     // 锁定与解锁
@@ -144,16 +154,21 @@ export default {
 
     // 箭头与符号
     app.component('IconDown', Down)
-    app.component('IconLeftC', LeftC)
-    app.component('IconRightC', RightC)
+    app.component('IconLeftTwo', LeftTwo)
+    app.component('IconRightTwo', RightTwo)
     app.component('IconPlus', Plus)
     app.component('IconMinus', Minus)
+    app.component('IconClose', Close)
     app.component('IconCloseSmall', CloseSmall)
     
     // 图表
-    app.component('IconChartLine', ChartLine)
     app.component('IconChartHistogram', ChartHistogram)
-    app.component('IconChartProportion', ChartProportion)
+    app.component('IconChartHistogramOne', ChartHistogramOne)
+    app.component('IconChartLine', ChartLine)
+    app.component('IconChartLineArea', ChartLineArea)
+    app.component('IconChartScatter', ChartScatter)
+    app.component('IconChartPie', ChartPie)
+    app.component('IconChartRing', ChartRing)
 
     // 其他
     app.component('IconPlayOne', PlayOne)
@@ -161,6 +176,7 @@ export default {
     app.component('IconHelpcenter', Helpcenter)
     app.component('IconGithub', Github)
     app.component('IconWrite', Write)
+    app.component('IconErase', Erase)
     app.component('IconEffects', Effects)
     app.component('IconRotate', Rotate)
     app.component('IconEdit', Edit)
@@ -169,5 +185,7 @@ export default {
     app.component('IconClick', Click)
     app.component('IconTheme', Theme)
     app.component('IconArrowCircleLeft', ArrowCircleLeft)
+    app.component('IconLogout', Logout)
+    app.component('IconClear', Clear)
   }
 }

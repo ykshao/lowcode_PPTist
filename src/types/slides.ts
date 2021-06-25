@@ -22,8 +22,7 @@ export interface PPTElementOutline {
   color?: string;
 }
 
-export interface PPTTextElement {
-  type: 'text';
+interface PPTBaseElement {
   id: string;
   left: number;
   top: number;
@@ -31,8 +30,14 @@ export interface PPTTextElement {
   groupId?: string;
   width: number;
   height: number;
+}
+
+export interface PPTTextElement extends PPTBaseElement {
+  type: 'text';
   content: string;
-  rotate?: number;
+  rotate: number;
+  defaultFontName: string;
+  defaultColor: string;
   outline?: PPTElementOutline;
   fill?: string;
   lineHeight?: number;
@@ -42,8 +47,8 @@ export interface PPTTextElement {
 }
 
 export interface ImageOrShapeFlip {
-  x?: number;
-  y?: number;
+  flipH?: boolean;
+  flipV?: boolean;
 }
 export interface ImageElementFilters {
   'blur'?: string;
@@ -58,22 +63,16 @@ export interface ImageElementClip {
   range: [[number, number], [number, number]];
   shape: string;
 }
-export interface PPTImageElement {
+export interface PPTImageElement extends PPTBaseElement {
   type: 'image';
-  id: string;
-  left: number;
-  top: number;
-  lock?: boolean;
-  groupId?: string;
-  width: number;
-  height: number;
   fixedRatio: boolean;
   src: string;
-  rotate?: number;
+  rotate: number;
   outline?: PPTElementOutline;
   filters?: ImageElementFilters;
   clip?: ImageElementClip;
-  flip?: ImageOrShapeFlip;
+  flipH?: boolean;
+  flipV?: boolean;
   shadow?: PPTElementShadow;
 }
 
@@ -82,37 +81,25 @@ export interface ShapeGradient {
   color: [string, string];
   rotate: number;
 }
-export interface PPTShapeElement {
+export interface PPTShapeElement extends PPTBaseElement {
   type: 'shape';
-  id: string;
-  left: number;
-  top: number;
-  lock?: boolean;
-  groupId?: string;
-  width: number;
-  height: number;
   viewBox: number;
   path: string;
   fixedRatio: boolean;
   fill: string;
   gradient?: ShapeGradient;
-  rotate?: number;
+  rotate: number;
   outline?: PPTElementOutline;
   opacity?: number;
-  flip?: ImageOrShapeFlip;
+  flipH?: boolean;
+  flipV?: boolean;
   shadow?: PPTElementShadow;
 }
 
-export interface PPTLineElement {
+export interface PPTLineElement extends Omit<PPTBaseElement, 'height'> {
   type: 'line';
-  id: string;
-  left: number;
-  top: number;
-  lock?: boolean;
-  groupId?: string;
   start: [number, number];
   end: [number, number];
-  width: number;
   style: string;
   color: string;
   points: [string, string];
@@ -126,15 +113,8 @@ export interface ChartData {
   labels: string[];
   series: number[][];
 }
-export interface PPTChartElement {
+export interface PPTChartElement extends PPTBaseElement {
   type: 'chart';
-  id: string;
-  left: number;
-  top: number;
-  lock?: boolean;
-  groupId?: string;
-  width: number;
-  height: number;
   fill?: string;
   chartType: ChartType;
   data: ChartData;
@@ -169,15 +149,8 @@ export interface TableTheme {
   colHeader: boolean;
   colFooter: boolean;
 } 
-export interface PPTTableElement {
+export interface PPTTableElement extends PPTBaseElement {
   type: 'table';
-  id: string;
-  left: number;
-  top: number;
-  lock?: boolean;
-  groupId?: string;
-  width: number;
-  height: number;
   outline: PPTElementOutline;
   theme?: TableTheme;
   colWidths: number[];
@@ -205,6 +178,7 @@ export interface SlideBackground {
 export interface Slide {
   id: string;
   elements: PPTElement[];
+  remark?: string;
   background?: SlideBackground;
   animations?: PPTAnimation[];
   turningMode?: 'no' | 'fade' | 'slideX' | 'slideY';

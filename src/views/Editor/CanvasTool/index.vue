@@ -23,7 +23,7 @@
           <ShapePool @select="shape => drawShape(shape)" />
         </template>
         <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="插入形状">
-          <IconPentagonOne class="handler-item" />
+          <IconGraphicDesign class="handler-item" />
         </Tooltip>
       </Popover>
       <Popover trigger="click" v-model:visible="linePoolVisible">
@@ -186,6 +186,7 @@ export default defineComponent({
 }
 .handler-item {
   margin: 0 10px;
+  font-size: 14px;
   cursor: pointer;
 
   &.disable {
@@ -202,8 +203,7 @@ export default defineComponent({
   }
 
   .viewport-size {
-    font-size: 12px;
-    margin-top: -1px;
+    font-size: 13px;
   }
 }
 </style>

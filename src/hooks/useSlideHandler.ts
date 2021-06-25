@@ -25,12 +25,17 @@ export default () => {
 
   // 重置幻灯片
   const resetSlides = () => {
+    const emptySlide = {
+      id: createRandomCode(8),
+      elements: [],
+      background: {
+        type: 'solid',
+        color: theme.value.backgroundColor,
+      },
+    }
     store.commit(MutationTypes.UPDATE_SLIDE_INDEX, 0)
     store.commit(MutationTypes.SET_ACTIVE_ELEMENT_ID_LIST, [])
-    store.commit(MutationTypes.SET_SLIDES, [{
-      id: createRandomCode(),
-      elements: [],
-    }])
+    store.commit(MutationTypes.SET_SLIDES, [emptySlide])
   }
 
   /**
@@ -38,14 +43,12 @@ export default () => {
    * @param command 移动页面焦点命令：上移、下移
    */
   const updateSlideIndex = (command: string) => {
-    let targetIndex = 0
     if (command === KEYS.UP && slideIndex.value > 0) {
-      targetIndex = slideIndex.value - 1
+      store.commit(MutationTypes.UPDATE_SLIDE_INDEX, slideIndex.value - 1)
     }
     else if (command === KEYS.DOWN && slideIndex.value < slides.value.length - 1) {
-      targetIndex = slideIndex.value + 1
+      store.commit(MutationTypes.UPDATE_SLIDE_INDEX, slideIndex.value + 1)
     }
-    store.commit(MutationTypes.UPDATE_SLIDE_INDEX, targetIndex)
   }
 
   // 将当前页面数据加密后复制到剪贴板
@@ -77,6 +80,7 @@ export default () => {
         color: theme.value.backgroundColor,
       },
     }
+    store.commit(MutationTypes.SET_ACTIVE_ELEMENT_ID_LIST, [])
     store.commit(MutationTypes.ADD_SLIDE, emptySlide)
     addHistorySnapshot()
   }
@@ -108,6 +112,13 @@ export default () => {
     deleteSlide(targetSlidesId)
   }
 
+  // 选中全部幻灯片
+  const selectAllSlide = () => {
+    const newSelectedSlidesIndex = Array.from(Array(slides.value.length), (item, index) => index)
+    store.commit(MutationTypes.SET_ACTIVE_ELEMENT_ID_LIST, [])
+    store.commit(MutationTypes.UPDATE_SELECTED_SLIDES_INDEX, newSelectedSlidesIndex)
+  }
+
   return {
     resetSlides,
     updateSlideIndex,
@@ -117,5 +128,6 @@ export default () => {
     copyAndPasteSlide,
     deleteSlide,
     cutSlide,
+    selectAllSlide,
   }
 }

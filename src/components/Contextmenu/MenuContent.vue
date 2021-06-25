@@ -7,7 +7,14 @@
         @click.stop="handleClickMenuItem(menu)"
         :class="{'divider': menu.divider, 'disable': menu.disable}"
       >
-        <div class="menu-item-content" :class="{'has-children': menu.children}" v-if="!menu.divider">
+        <div 
+          class="menu-item-content" 
+          :class="{
+            'has-children': menu.children,
+            'has-handler': menu.handler,
+          }" 
+          v-if="!menu.divider"
+        >
           <span class="text">{{menu.text}}</span>
           <span class="sub-text" v-if="menu.subText && !menu.children">{{menu.subText}}</span>
 
@@ -61,7 +68,7 @@ $subMenuWidth: 120px;
   padding: 0 20px;
   color: #555;
   font-size: 12px;
-  transition: all .1s;
+  transition: all $transitionDelayFast;
   white-space: nowrap;
   height: $menuHeight;
   line-height: $menuHeight;
@@ -70,6 +77,10 @@ $subMenuWidth: 120px;
 
   &:not(.disable):hover > .menu-item-content > .sub-menu {
     display: block;
+  }
+
+  &:not(.disable):hover > .has-children.has-handler::after {
+    transform: scale(1);
   }
 
   &:hover:not(.disable) {
@@ -109,6 +120,19 @@ $subMenuWidth: 120px;
     top: 50%;
     transform: translateY(-50%) rotate(45deg);
   }
+  &.has-children.has-handler::after {
+    content: '';
+    display: inline-block;
+    width: 1px;
+    height: 24px;
+    background-color: #f1f1f1;
+    position: absolute;
+    right: 18px;
+    top: 3px;
+    transform: scale(0);
+    transition: transform $transitionDelay;
+  }
+
   .sub-text {
     opacity: 0.6;
   }

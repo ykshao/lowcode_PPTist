@@ -11,6 +11,7 @@
             <MenuItem @click="deleteSlide()">删除页面</MenuItem>
             <MenuItem @click="toggleGridLines()">{{ showGridLines ? '关闭网格线' : '打开网格线' }}</MenuItem>
             <MenuItem @click="resetSlides()">重置幻灯片</MenuItem>
+            <MenuItem @click="exportDialogVisible = true">导出 JSON</MenuItem>
           </Menu>
         </template>
       </Dropdown>
@@ -27,7 +28,7 @@
         <div class="menu-item"><IconHelpcenter /> <span class="text">帮助</span></div>
         <template #overlay>
           <Menu>
-            <MenuItem @click="openDoc()">开发文档</MenuItem>
+            <MenuItem @click="goIssues()">意见反馈</MenuItem>
             <MenuItem @click="hotkeyDrawerVisible = true">快捷键</MenuItem>
           </Menu>
         </template>
@@ -53,6 +54,17 @@
     >
       <HotkeyDoc />
     </Drawer>
+
+    <Modal
+      v-model:visible="exportDialogVisible" 
+      :footer="null" 
+      centered
+      :closable="false"
+      :width="680"
+      destroyOnClose
+    >
+      <ExportDialog @close="exportDialogVisible = false"/>
+    </Modal>
   </div>
 </template>
 
@@ -64,12 +76,13 @@ import useSlideHandler from '@/hooks/useSlideHandler'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 import HotkeyDoc from './HotkeyDoc.vue'
-import { message } from 'ant-design-vue'
+import ExportDialog from './ExportDialog.vue'
 
 export default defineComponent({
   name: 'editor-header',
   components: {
     HotkeyDoc,
+    ExportDialog,
   },
   setup() {
     const store = useStore()
@@ -83,11 +96,12 @@ export default defineComponent({
       store.commit(MutationTypes.SET_GRID_LINES_STATE, !showGridLines.value)
     }
 
-    const openDoc = () => {
-      message.warning('作者努力编写中...')
-    }
-
     const hotkeyDrawerVisible = ref(false)
+    const exportDialogVisible = ref(false)
+
+    const goIssues = () => {
+      window.open('https://github.com/pipipi-pikachu/PPTist/issues')
+    }
 
     return {
       enterScreening,
@@ -99,8 +113,9 @@ export default defineComponent({
       toggleGridLines,
       showGridLines,
       resetSlides,
-      openDoc,
       hotkeyDrawerVisible,
+      exportDialogVisible,
+      goIssues,
     }
   },
 })
@@ -125,17 +140,17 @@ export default defineComponent({
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 13px;
+  font-size: 14px;
   padding: 0 10px;
-  transition: background-color .2s;
+  transition: background-color $transitionDelay;
   cursor: pointer;
-
-  &:hover {
-    background-color: $lightGray;
-  }
 
   .text {
     margin-left: 4px;
   }
+}
+
+.left .menu-item:hover {
+  background-color: $lightGray;
 }
 </style>

@@ -41,15 +41,12 @@
       @close="slideThumbnailModelVisible = false"
     />
 
+    <WritingBoardTool v-if="writingBoardToolVisible" @close="writingBoardToolVisible = false" />
+
     <div class="tools">
-      <IconLeftC class="tool-btn" @click="execPrev()" />
-      <IconRightC class="tool-btn" @click="execNext()" />
-      <Popover trigger="click" v-model:visible="writingBoardToolVisible">
-        <template #content>
-          <WritingBoardTool @close="writingBoardToolVisible = false" />
-        </template>
-        <IconWrite class="tool-btn" />
-      </Popover>
+      <IconLeftTwo class="tool-btn" theme="two-tone" :fill="['#111', '#fff']" @click="execPrev()" />
+      <IconRightTwo class="tool-btn" theme="two-tone" :fill="['#111', '#fff']" @click="execNext()" />
+      <IconWrite class="tool-btn" theme="two-tone" :fill="['#111', '#fff']" @click="writingBoardToolVisible = true" />
     </div>
 
     <div class="page-number" @click="slideThumbnailModelVisible = true" v-if="showPageNumber">
@@ -60,7 +57,7 @@
 
 <script lang="ts">
 import { computed, defineComponent, onMounted, onUnmounted, provide, ref } from 'vue'
-import throttle from 'lodash/throttle'
+import { throttle } from 'lodash'
 import { MutationTypes, useStore } from '@/store'
 import { Slide } from '@/types/slides'
 import { VIEWPORT_SIZE } from '@/configs/canvas'
@@ -151,9 +148,11 @@ export default defineComponent({
       const elRef = document.querySelector(`#screen-element-${animation.elId} [class^=base-element-]`)
       if (elRef) {
         const animationName = `${prefix}${animation.type}`
+        document.documentElement.style.setProperty('--animate-duration', `${animation.duration}ms`)
         elRef.classList.add(`${prefix}animated`, animationName)
 
         const handleAnimationEnd = () => {
+          document.documentElement.style.removeProperty('--animate-duration')
           elRef.classList.remove(`${prefix}animated`, animationName)
         }
         elRef.addEventListener('animationend', handleAnimationEnd, { once: true })
@@ -282,6 +281,10 @@ export default defineComponent({
         {
           text: '查看所有幻灯片',
           handler: () => slideThumbnailModelVisible.value = true,
+        },
+        {
+          text: '画笔',
+          handler: () => writingBoardToolVisible.value = true,
         },
         { divider: true },
         {
@@ -421,8 +424,7 @@ export default defineComponent({
   right: 8px;
   padding: 8px 12px;
   color: #666;
-  background-color: rgba($color: #f2f4f6, $alpha: .7);
-  box-shadow: 0 2px 12px 0 rgba($color: #333, $alpha: .2);
+  background-color: #eee;
   border-radius: $borderRadius;
   z-index: 10;
   cursor: pointer;
