@@ -15,11 +15,26 @@
       <Toolbar class="layout-content-right" />
     </div>
   </div>
+
+  <SelectPanel v-if="showSelectPanel" />
+
+  <Modal
+    :visible="!!dialogForExport" 
+    :footer="null" 
+    centered
+    :closable="false"
+    :width="680"
+    destroyOnClose
+    @cancel="closeExportDialog()"
+  >
+    <ExportDialog />
+  </Modal>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref } from 'vue'
-
+<script lang="ts" setup>
+import { ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMainStore } from '@/store'
 import useGlobalHotkey from '@/hooks/useGlobalHotkey'
 import usePasteEvent from '@/hooks/usePasteEvent'
 
@@ -29,28 +44,17 @@ import CanvasTool from './CanvasTool/index.vue'
 import Thumbnails from './Thumbnails/index.vue'
 import Toolbar from './Toolbar/index.vue'
 import Remark from './Remark/index.vue'
+import ExportDialog from './ExportDialog/index.vue'
+import SelectPanel from './SelectPanel.vue'
 
-export default defineComponent({
-  name: 'editor',
-  components: {
-    EditorHeader,
-    Canvas,
-    CanvasTool,
-    Thumbnails,
-    Toolbar,
-    Remark,
-  },
-  setup() {
-    const remarkHeight = ref(40)
+const mainStore = useMainStore()
+const { dialogForExport, showSelectPanel } = storeToRefs(mainStore)
+const closeExportDialog = () => mainStore.setDialogForExport('')
 
-    useGlobalHotkey()
-    usePasteEvent()
+const remarkHeight = ref(40)
 
-    return {
-      remarkHeight,
-    }
-  },
-})
+useGlobalHotkey()
+usePasteEvent()
 </script>
 
 <style lang="scss" scoped>

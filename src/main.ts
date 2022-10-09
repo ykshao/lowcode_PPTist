@@ -1,28 +1,21 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
-import { store, key } from './store'
+import './registerServiceWorker'
 
 import '@icon-park/vue-next/styles/index.css'
 import 'prosemirror-view/style/prosemirror.css'
+import 'animate.css'
+
 import '@/assets/styles/prosemirror.scss'
 import '@/assets/styles/global.scss'
 import '@/assets/styles/antd.scss'
 import '@/assets/styles/font.scss'
-import 'animate.css'
 
-// 自定义插件
-import Contextmenu from './plugins/contextmenu'
-import ClickOutside from './plugins/clickOutside'
-import IconPark from './plugins/iconPark'
+import Icon from '@/plugins/icon'
+import Component from '@/plugins/component'
+import Directive from '@/plugins/directive'
 
-// 自定义组件
-import FileInput from '@/components/FileInput.vue'
-import SvgWrapper from '@/components/SvgWrapper.vue'
-import CheckboxButton from '@/components/CheckboxButton.vue'
-import CheckboxButtonGroup from '@/components/CheckboxButtonGroup.vue'
-import ColorPicker from '@/components/ColorPicker/index.vue'
-
-// antd 组件
 import {
   InputNumber,
   Divider,
@@ -44,16 +37,6 @@ import {
 
 const app = createApp(App)
 
-app.directive('contextmenu', Contextmenu)
-app.directive('click-outside', ClickOutside)
-app.use(IconPark)
-
-app.component('FileInput', FileInput)
-app.component('SvgWrapper', SvgWrapper)
-app.component('CheckboxButton', CheckboxButton)
-app.component('CheckboxButtonGroup', CheckboxButtonGroup)
-app.component('ColorPicker', ColorPicker)
-
 app.component('InputNumber', InputNumber)
 app.component('Divider', Divider)
 app.component('Button', Button)
@@ -70,6 +53,7 @@ app.component('RadioGroup', Radio.Group)
 app.component('RadioButton', Radio.Button)
 app.component('Input', Input)
 app.component('InputGroup', Input.Group)
+app.component('TextArea', Input.TextArea)
 app.component('Modal', Modal)
 app.component('Dropdown', Dropdown)
 app.component('Menu', Menu)
@@ -78,5 +62,9 @@ app.component('Checkbox', Checkbox)
 app.component('Drawer', Drawer)
 app.component('Spin', Spin)
 
-app.use(store, key)
+app.use(Icon)
+app.use(Component)
+app.use(Directive)
+
+app.use(createPinia())
 app.mount('#app')

@@ -1,7 +1,7 @@
 <template>
   <div class="slide-thumbnails">
     <div class="return-button">
-      <IconArrowCircleLeft class="icon" @click="close()" />
+      <IconArrowCircleLeft class="icon" @click="emit('close')" />
     </div>
     <div class="slide-thumbnails-content">
       <div 
@@ -9,44 +9,41 @@
         :class="{ 'active': index === slideIndex }"
         v-for="(slide, index) in slides" 
         :key="slide.id"
-        @click="turnSlideToIndex(index)"
+        @click="turnSlide(index)"
       >
-        <ThumbnailSlide :slide="slide" :size="150" />
+        <ThumbnailSlide :slide="slide" :size="150" :visible="index < slidesLoadLimit" />
       </div>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, PropType } from 'vue'
-import { useStore } from '@/store'
+<script lang="ts" setup>
+import { PropType } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useSlidesStore } from '@/store'
+import useLoadSlides from '@/hooks/useLoadSlides'
 
 import ThumbnailSlide from '@/views/components/ThumbnailSlide/index.vue'
 
-export default defineComponent({
-  name: 'slide-thumbnails',
-  components: {
-    ThumbnailSlide,
-  },
-  props: {
-    turnSlideToIndex: {
-      type: Function as PropType<(index: number) => void>,
-    },
-  },
-  setup(props, { emit }) {
-    const store = useStore()
-    const slides = computed(() => store.state.slides)
-    const slideIndex = computed(() => store.state.slideIndex)
-
-    const close = () => emit('close')
-
-    return {
-      slides,
-      slideIndex,
-      close,
-    }
+const props = defineProps({
+  turnSlideToIndex: {
+    type: Function as PropType<(index: number) => void>,
+    required: true,
   },
 })
+
+const emit = defineEmits<{
+  (event: 'close'): void
+}>()
+
+const { slides, slideIndex } = storeToRefs(useSlidesStore())
+
+const { slidesLoadLimit } = useLoadSlides()
+
+const turnSlide = (index: number) => {
+  props.turnSlideToIndex(index)
+  emit('close')
+}
 </script>
 
 <style lang="scss" scoped>

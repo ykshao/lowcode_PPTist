@@ -12,6 +12,7 @@
         height: VIEWPORT_SIZE * viewportRatio + 'px',
         transform: `scale(${scale})`,
       }"
+      v-if="visible"
     >
       <div class="background" :style="backgroundStyle"></div>
       <ThumbnailElement
@@ -21,56 +22,50 @@
         :elementIndex="index + 1"
       />
     </div>
+    <div class="placeholder" v-else>加载中 ...</div>
   </div>
 </template>
 
-<script lang="ts">
-import { computed, PropType, defineComponent } from 'vue'
-import { useStore } from '@/store'
+<script lang="ts" setup>
+import { computed, PropType, provide } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useSlidesStore } from '@/store'
 import { Slide } from '@/types/slides'
+import { injectKeySlideScale } from '@/types/injectKey'
 import { VIEWPORT_SIZE } from '@/configs/canvas'
 import useSlideBackgroundStyle from '@/hooks/useSlideBackgroundStyle'
 
 import ThumbnailElement from './ThumbnailElement.vue'
 
-export default defineComponent({
-  name: 'thumbnail-slide',
-  components: {
-    ThumbnailElement,
+const props = defineProps({
+  slide: {
+    type: Object as PropType<Slide>,
+    required: true,
   },
-  props: {
-    slide: {
-      type: Object as PropType<Slide>,
-      required: true,
-    },
-    size: {
-      type: Number,
-      required: true,
-    },
+  size: {
+    type: Number,
+    required: true,
   },
-  setup(props) {
-    const store = useStore()
-    const viewportRatio = computed(() => store.state.viewportRatio)
-
-    const background = computed(() => props.slide.background)
-    const { backgroundStyle } = useSlideBackgroundStyle(background)
-
-    const scale = computed(() => props.size / VIEWPORT_SIZE)
-
-    return {
-      scale,
-      backgroundStyle,
-      VIEWPORT_SIZE,
-      viewportRatio,
-    }
+  visible: {
+    type: Boolean,
+    default: true,
   },
 })
+
+const { viewportRatio } = storeToRefs(useSlidesStore())
+
+const background = computed(() => props.slide.background)
+const { backgroundStyle } = useSlideBackgroundStyle(background)
+
+const scale = computed(() => props.size / VIEWPORT_SIZE)
+provide(injectKeySlideScale, scale)
 </script>
 
 <style lang="scss" scoped>
 .thumbnail-slide {
   background-color: #fff;
   overflow: hidden;
+  user-select: none;
 }
 .elements {
   transform-origin: 0 0;
@@ -80,5 +75,12 @@ export default defineComponent({
   height: 100%;
   background-position: center;
   position: absolute;
+}
+.placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 </style>

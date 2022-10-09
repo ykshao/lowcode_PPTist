@@ -1,38 +1,47 @@
 <template>
-  <Editor v-if="!screening" />
-  <Screen v-else />
+  <Screen v-if="screening" />
+  <Editor v-else-if="_isPC" />
+  <Mobile v-else />
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, onMounted } from 'vue'
-import { MutationTypes, ActionTypes, useStore } from '@/store'
+<script lang="ts" setup>
+import { onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useScreenStore, useMainStore, useSnapshotStore } from '@/store'
+import { LOCALSTORAGE_KEY_DISCARDED_DB } from '@/configs/storage'
+import { deleteDiscardedDB } from '@/utils/database'
+import { isPC } from './utils/common'
 
 import Editor from './views/Editor/index.vue'
 import Screen from './views/Screen/index.vue'
+import Mobile from './views/Mobile/index.vue'
 
-export default defineComponent({
-  name: 'app',
-  components: {
-    Editor,
-    Screen,
-  },
-  setup() {
-    const store = useStore()
-    const screening = computed(() => store.state.screening)
+const _isPC = isPC()
 
-    if (process.env.NODE_ENV === 'production') {
-      window.onbeforeunload = () => false
-    }
+const mainStore = useMainStore()
+const snapshotStore = useSnapshotStore()
+const { databaseId } = storeToRefs(mainStore)
+const { screening } = storeToRefs(useScreenStore())
 
-    onMounted(() => {
-      store.commit(MutationTypes.SET_AVAILABLE_FONTS)
-      store.dispatch(ActionTypes.INIT_SNAPSHOT_DATABASE)
-    })
+if (process.env.NODE_ENV === 'production') {
+  window.onbeforeunload = () => false
+}
 
-    return {
-      screening,
-    }
-  },
+onMounted(async () => {
+  await deleteDiscardedDB()
+  snapshotStore.initSnapshotDatabase()
+  mainStore.setAvailableFonts()
+})
+
+// 应用注销时向 localStorage 中记录下本次 indexedDB 的数据库ID，用于之后清除数据库
+window.addEventListener('unload', () => {
+  const discardedDB = localStorage.getItem(LOCALSTORAGE_KEY_DISCARDED_DB)
+  const discardedDBList: string[] = discardedDB ? JSON.parse(discardedDB) : []
+
+  discardedDBList.push(databaseId.value)
+
+  const newDiscardedDB = JSON.stringify(discardedDBList)
+  localStorage.setItem(LOCALSTORAGE_KEY_DISCARDED_DB, newDiscardedDB)
 })
 </script>
 

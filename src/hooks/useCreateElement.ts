@@ -1,43 +1,48 @@
-import { computed } from 'vue'
-import { MutationTypes, useStore } from '@/store'
-import { createRandomCode } from '@/utils/common'
+import { storeToRefs } from 'pinia'
+import { nanoid } from 'nanoid'
+import { useMainStore, useSlidesStore } from '@/store'
 import { getImageSize } from '@/utils/image'
 import { VIEWPORT_SIZE } from '@/configs/canvas'
-import { PPTLineElement, ChartType, PPTElement, TableCell, TableCellStyle } from '@/types/slides'
-import { ShapePoolItem } from '@/configs/shapes'
+import { PPTLineElement, PPTElement, TableCell, TableCellStyle, PPTShapeElement, PPTChartElement, ChartOptions, PresetChartType } from '@/types/slides'
+import { ShapePoolItem, SHAPE_PATH_FORMULAS } from '@/configs/shapes'
 import { LinePoolItem } from '@/configs/lines'
+import { CHART_TYPES } from '@/configs/chartTypes'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 interface CommonElementPosition {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
+  top: number
+  left: number
+  width: number
+  height: number
 }
 
 interface LineElementPosition {
-  top: number;
-  left: number;
-  start: [number, number];
-  end: [number, number];
+  top: number
+  left: number
+  start: [number, number]
+  end: [number, number]
 }
 
 export default () => {
-  const store = useStore()
-  const themeColor = computed(() => store.state.theme.themeColor)
-  const fontColor = computed(() => store.state.theme.fontColor)
-  const fontName = computed(() => store.state.theme.fontName)
-  const viewportRatio = computed(() => store.state.viewportRatio)
-  const creatingElement = computed(() => store.state.creatingElement)
+  const mainStore = useMainStore()
+  const slidesStore = useSlidesStore()
+  const { creatingElement } = storeToRefs(mainStore)
+  const { theme, viewportRatio } = storeToRefs(slidesStore)
 
   const { addHistorySnapshot } = useHistorySnapshot()
 
   // 创建（插入）一个元素并将其设置为被选中元素
-  const createElement = (element: PPTElement) => {
-    store.commit(MutationTypes.ADD_ELEMENT, element)
-    store.commit(MutationTypes.SET_ACTIVE_ELEMENT_ID_LIST, [element.id])
+  const createElement = (element: PPTElement, callback?: () => void) => {
+    slidesStore.addElement(element)
+    mainStore.setActiveElementIdList([element.id])
 
-    if (creatingElement.value) store.commit(MutationTypes.SET_CREATING_ELEMENT, null)
+    if (creatingElement.value) mainStore.setCreatingElement(null)
+
+    setTimeout(() => {
+      mainStore.setEditorareaFocus(true)
+    }, 0)
+
+    if (callback) callback()
 
     addHistorySnapshot()
   }
@@ -61,7 +66,7 @@ export default () => {
 
       createElement({
         type: 'image',
-        id: createRandomCode(),
+        id: nanoid(10),
         src,
         width,
         height,
@@ -77,23 +82,36 @@ export default () => {
    * 创建图表元素
    * @param chartType 图表类型
    */
-  const createChartElement = (chartType: ChartType) => {
-    createElement({
+  const createChartElement = (type: PresetChartType) => {
+    const newElement: PPTChartElement = {
       type: 'chart',
-      id: createRandomCode(),
-      chartType,
+      id: nanoid(10),
+      chartType: CHART_TYPES[type],
       left: 300,
       top: 81.25,
       width: 400,
       height: 400,
-      themeColor: themeColor.value,
-      gridColor: fontColor.value,
+      rotate: 0,
+      themeColor: [theme.value.themeColor],
+      gridColor: theme.value.fontColor,
       data: {
         labels: ['类别1', '类别2', '类别3', '类别4', '类别5'],
+        legends: ['系列1'],
         series: [
           [12, 19, 5, 2, 18],
         ],
       },
+    }
+
+    let options: ChartOptions = {}
+    if (type === 'horizontalBar') options = { horizontalBars: true }
+    else if (type === 'area') options = { showArea: true }
+    else if (type === 'scatter') options = { showLine: false }
+    else if (type === 'ring') options = { donut: true }
+
+    createElement({
+      ...newElement,
+      options,
     })
   }
   
@@ -104,14 +122,14 @@ export default () => {
    */
   const createTableElement = (row: number, col: number) => {
     const style: TableCellStyle = {
-      fontname: fontName.value,
-      color: fontColor.value,
+      fontname: theme.value.fontName,
+      color: theme.value.fontColor,
     }
     const data: TableCell[][] = []
     for (let i = 0; i < row; i++) {
       const rowCells: TableCell[] = []
       for (let j = 0; j < col; j++) {
-        rowCells.push({ id: createRandomCode(), colspan: 1, rowspan: 1, text: '', style })
+        rowCells.push({ id: nanoid(10), colspan: 1, rowspan: 1, text: '', style })
       }
       data.push(rowCells)
     }
@@ -126,10 +144,11 @@ export default () => {
 
     createElement({
       type: 'table',
-      id: createRandomCode(),
+      id: nanoid(10),
       width,
       height,
       colWidths,
+      rotate: 0,
       data,
       left: (VIEWPORT_SIZE - width) / 2,
       top: (VIEWPORT_SIZE * viewportRatio.value - height) / 2,
@@ -139,12 +158,13 @@ export default () => {
         color: '#eeece1',
       },
       theme: {
-        color: themeColor.value,
+        color: theme.value.themeColor,
         rowHeader: true,
         rowFooter: false,
         colHeader: false,
         colFooter: false,
       },
+      cellMinHeight: 36,
     })
   }
   
@@ -153,19 +173,34 @@ export default () => {
    * @param position 位置大小信息
    * @param content 文本内容
    */
-  const createTextElement = (position: CommonElementPosition, content = '请输入内容') => {
+  
+  interface CreateTextData {
+    content?: string
+    vertical?: boolean
+  }
+  const createTextElement = (position: CommonElementPosition, data?: CreateTextData) => {
     const { left, top, width, height } = position
+    const content = data?.content || ''
+    const vertical = data?.vertical || false
+
+    const id = nanoid(10)
     createElement({
       type: 'text',
-      id: createRandomCode(),
+      id,
       left, 
       top, 
       width, 
       height,
       content,
       rotate: 0,
-      defaultFontName: fontName.value,
-      defaultColor: fontColor.value,
+      defaultFontName: theme.value.fontName,
+      defaultColor: theme.value.fontColor,
+      vertical,
+    }, () => {
+      setTimeout(() => {
+        const editorRef: HTMLElement | null = document.querySelector(`#editable-element-${id} .ProseMirror`)
+        if (editorRef) editorRef.focus()
+      }, 0)
     })
   }
   
@@ -176,19 +211,32 @@ export default () => {
    */
   const createShapeElement = (position: CommonElementPosition, data: ShapePoolItem) => {
     const { left, top, width, height } = position
-    createElement({
+    const newElement: PPTShapeElement = {
       type: 'shape',
-      id: createRandomCode(),
+      id: nanoid(10),
       left, 
       top, 
       width, 
       height,
       viewBox: data.viewBox,
       path: data.path,
-      fill: themeColor.value,
+      fill: theme.value.themeColor,
       fixedRatio: false,
       rotate: 0,
-    })
+    }
+    if (data.special) newElement.special = true
+    if (data.pathFormula) {
+      newElement.pathFormula = data.pathFormula
+      newElement.viewBox = [width, height]
+
+      const pathFormula = SHAPE_PATH_FORMULAS[data.pathFormula]
+      if ('editable' in pathFormula) {
+        newElement.path = pathFormula.formula(width, height, pathFormula.defaultValue)
+        newElement.keypoint = pathFormula.defaultValue
+      }
+      else newElement.path = pathFormula.formula(width, height)
+    }
+    createElement(newElement)
   }
   
   /**
@@ -201,19 +249,80 @@ export default () => {
 
     const newElement: PPTLineElement = {
       type: 'line',
-      id: createRandomCode(),
+      id: nanoid(10),
       left, 
       top, 
       start,
       end,
       points: data.points,
-      color: themeColor.value,
+      color: theme.value.themeColor,
       style: data.style,
       width: 2,
     }
     if (data.isBroken) newElement.broken = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2]
     if (data.isCurve) newElement.curve = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2]
+    if (data.isCubic) newElement.cubic = [[(start[0] + end[0]) / 2, (start[1] + end[1]) / 2], [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2]]
     createElement(newElement)
+  }
+  
+  /**
+   * 创建LaTeX元素
+   * @param svg SVG代码
+   */
+  const createLatexElement = (data: { path: string; latex: string; w: number; h: number; }) => {
+    createElement({
+      type: 'latex',
+      id: nanoid(10),
+      width: data.w,
+      height: data.h,
+      rotate: 0,
+      left: (VIEWPORT_SIZE - data.w) / 2,
+      top: (VIEWPORT_SIZE * viewportRatio.value - data.h) / 2,
+      path: data.path,
+      latex: data.latex,
+      color: theme.value.fontColor,
+      strokeWidth: 2,
+      viewBox: [data.w, data.h],
+      fixedRatio: true,
+    })
+  }
+  
+  /**
+   * 创建视频元素
+   * @param src 视频地址
+   */
+  const createVideoElement = (src: string) => {
+    createElement({
+      type: 'video',
+      id: nanoid(10),
+      width: 500,
+      height: 300,
+      rotate: 0,
+      left: (VIEWPORT_SIZE - 500) / 2,
+      top: (VIEWPORT_SIZE * viewportRatio.value - 300) / 2,
+      src,
+    })
+  }
+  
+  /**
+   * 创建音频元素
+   * @param src 音频地址
+   */
+  const createAudioElement = (src: string) => {
+    createElement({
+      type: 'audio',
+      id: nanoid(10),
+      width: 50,
+      height: 50,
+      rotate: 0,
+      left: (VIEWPORT_SIZE - 50) / 2,
+      top: (VIEWPORT_SIZE * viewportRatio.value - 50) / 2,
+      loop: false,
+      autoplay: false,
+      fixedRatio: true,
+      color: theme.value.themeColor,
+      src,
+    })
   }
 
   return {
@@ -223,5 +332,8 @@ export default () => {
     createTextElement,
     createShapeElement,
     createLineElement,
+    createLatexElement,
+    createVideoElement,
+    createAudioElement,
   }
 }

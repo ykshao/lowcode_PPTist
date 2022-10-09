@@ -2,7 +2,7 @@
   <div 
     class="canvas" 
     ref="canvasRef"
-    @mousewheel="$event => handleMousewheelCanvas($event)"
+    @wheel="$event => handleMousewheelCanvas($event)"
     @mousedown="$event => handleClickBlankArea($event)"
     v-contextmenu="contextmenus"
     v-click-outside="removeEditorAreaFocus"
@@ -27,6 +27,7 @@
           :type="line.type" 
           :axis="line.axis" 
           :length="line.length"
+          :canvasScale="canvasScale"
         />
         <MultiSelectOperate 
           v-if="activeElementIdList.length > 1"
@@ -43,7 +44,10 @@
           :isMultiSelect="activeElementIdList.length > 1"
           :rotateElement="rotateElement"
           :scaleElement="scaleElement"
+          :openLinkDialog="openLinkDialog"
           :dragLineElement="dragLineElement"
+          :moveShapeKeypoint="moveShapeKeypoint"
+          v-show="!hiddenElementIdList.includes(element.id)"
         />
         <ViewportBackground />
       </div>
@@ -54,12 +58,12 @@
         :style="{ transform: `scale(${canvasScale})` }"
       >
         <MouseSelection 
-          v-if="mouseSelectionState.isShow"
-          :top="mouseSelectionState.top" 
-          :left="mouseSelectionState.left" 
-          :width="mouseSelectionState.width" 
-          :height="mouseSelectionState.height" 
-          :quadrant="mouseSelectionState.quadrant"
+          v-if="mouseSelectionVisible"
+          :top="mouseSelection.top" 
+          :left="mouseSelection.left" 
+          :width="mouseSelection.width" 
+          :height="mouseSelection.height" 
+          :quadrant="mouseSelectionQuadrant"
         />      
         <EditableElement 
           v-for="(element, index) in elementList" 
@@ -68,19 +72,37 @@
           :elementIndex="index + 1"
           :isMultiSelect="activeElementIdList.length > 1"
           :selectElement="selectElement"
+          :openLinkDialog="openLinkDialog"
+          v-show="!hiddenElementIdList.includes(element.id)"
         />
       </div>
     </div>
+
+    <div class="drag-mask" v-if="spaceKeyState"></div>
+
+    <Ruler :viewportStyles="viewportStyles" v-if="showRuler" />
+
+    <Modal
+      v-model:visible="linkDialogVisible" 
+      :footer="null" 
+      centered
+      :width="540"
+      destroyOnClose
+    >
+      <LinkDialog @close="linkDialogVisible = false" />
+    </Modal>
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, provide, ref, watch, watchEffect } from 'vue'
+<script lang="ts" setup>
+import { nextTick, onMounted, onUnmounted, provide, ref, watch, watchEffect } from 'vue'
 import { throttle } from 'lodash'
-import { MutationTypes, useStore } from '@/store'
+import { storeToRefs } from 'pinia'
+import { useMainStore, useSlidesStore, useKeyboardStore } from '@/store'
 import { ContextmenuItem } from '@/components/Contextmenu/types'
-import { PPTElement, Slide } from '@/types/slides'
+import { PPTElement } from '@/types/slides'
 import { AlignmentLineProps } from '@/types/edit'
+import { injectKeySlideScale } from '@/types/injectKey'
 import { removeAllRanges } from '@/utils/selection'
 import { KEYS } from '@/configs/hotkey'
 
@@ -92,6 +114,7 @@ import useScaleElement from './hooks/useScaleElement'
 import useSelectElement from './hooks/useSelectElement'
 import useDragElement from './hooks/useDragElement'
 import useDragLineElement from './hooks/useDragLineElement'
+import useMoveShapeKeypoint from './hooks/useMoveShapeKeypoint'
 import useInsertFromCreateSelection from './hooks/useInsertFromCreateSelection'
 
 import useDeleteElement from '@/hooks/useDeleteElement'
@@ -105,166 +128,187 @@ import EditableElement from './EditableElement.vue'
 import MouseSelection from './MouseSelection.vue'
 import ViewportBackground from './ViewportBackground.vue'
 import AlignmentLine from './AlignmentLine.vue'
+import Ruler from './Ruler.vue'
 import ElementCreateSelection from './ElementCreateSelection.vue'
 import MultiSelectOperate from './Operate/MultiSelectOperate.vue'
 import Operate from './Operate/index.vue'
+import LinkDialog from './LinkDialog.vue'
 
-export default defineComponent({
-  name: 'editor-canvas',
-  components: {
-    EditableElement,
-    MouseSelection,
-    ViewportBackground,
-    AlignmentLine,
-    ElementCreateSelection,
-    MultiSelectOperate,
-    Operate,
-  },
-  setup() {
-    const store = useStore()
+const mainStore = useMainStore()
+const {
+  activeElementIdList,
+  activeGroupElementId,
+  handleElementId,
+  hiddenElementIdList,
+  editorAreaFocus,
+  gridLineSize,
+  showRuler,
+  showSelectPanel,
+  creatingElement,
+  canvasScale,
+  textFormatPainter,
+} = storeToRefs(mainStore)
+const { currentSlide } = storeToRefs(useSlidesStore())
+const { ctrlKeyState, spaceKeyState } = storeToRefs(useKeyboardStore())
 
-    const activeElementIdList = computed(() => store.state.activeElementIdList)
-    const handleElementId = computed(() => store.state.handleElementId)
-    const activeGroupElementId = computed(() => store.state.activeGroupElementId)
-    const editorAreaFocus = computed(() => store.state.editorAreaFocus)
-    const ctrlKeyState = computed(() => store.state.ctrlKeyState)
-    const ctrlOrShiftKeyActive = computed<boolean>(() => store.getters.ctrlOrShiftKeyActive)
+const viewportRef = ref<HTMLElement>()
+const alignmentLines = ref<AlignmentLineProps[]>([])
 
-    const viewportRef = ref<HTMLElement>()
-    const alignmentLines = ref<AlignmentLineProps[]>([])
+const linkDialogVisible = ref(false)
+const openLinkDialog = () => linkDialogVisible.value = true
 
-    watch(handleElementId, () => {
-      store.commit(MutationTypes.SET_ACTIVE_GROUP_ELEMENT_ID, '')
-    })
-
-    const currentSlide = computed<Slide>(() => store.getters.currentSlide)
-    const elementList = ref<PPTElement[]>([])
-    const setLocalElementList = () => {
-      elementList.value = currentSlide.value ? JSON.parse(JSON.stringify(currentSlide.value.elements)) : []
-    }
-    watchEffect(setLocalElementList)
-
-    const canvasRef = ref<HTMLElement>()
-    const canvasScale = computed(() => store.state.canvasScale)
-    const { viewportStyles } = useViewportSize(canvasRef)
-
-    useDropImageOrText(canvasRef)
-
-    const { mouseSelectionState, updateMouseSelection } = useMouseSelection(elementList, viewportRef)
-
-    const { dragElement } = useDragElement(elementList, alignmentLines)
-    const { dragLineElement } = useDragLineElement(elementList)
-    const { selectElement } = useSelectElement(elementList, dragElement)
-    const { scaleElement, scaleMultiElement } = useScaleElement(elementList, alignmentLines)
-    const { rotateElement } = useRotateElement(elementList, viewportRef)
-
-    const { selectAllElement } = useSelectAllElement()
-    const { deleteAllElements } = useDeleteElement()
-    const { pasteElement } = useCopyAndPasteElement()
-    const { enterScreening } = useScreening()
-    const { updateSlideIndex } = useSlideHandler()
-
-    // 点击画布的空白区域：清空焦点元素、设置画布焦点、清除文字选区
-    const handleClickBlankArea = (e: MouseEvent) => {
-      store.commit(MutationTypes.SET_ACTIVE_ELEMENT_ID_LIST, [])
-      if (!ctrlOrShiftKeyActive.value) updateMouseSelection(e)
-      if (!editorAreaFocus.value) store.commit(MutationTypes.SET_EDITORAREA_FOCUS, true)
-      removeAllRanges()
-    }
-
-    // 移除画布编辑区域焦点
-    const removeEditorAreaFocus = () => {
-      if (editorAreaFocus.value) store.commit(MutationTypes.SET_EDITORAREA_FOCUS, false)
-    }
-
-    // 滚动鼠标
-    const { scaleCanvas } = useScaleCanvas()
-    const throttleScaleCanvas = throttle(scaleCanvas, 100, { leading: true, trailing: false })
-    const throttleUpdateSlideIndex = throttle(updateSlideIndex, 300, { leading: true, trailing: false })
-
-    const handleMousewheelCanvas = (e: WheelEvent) => {
-      e.preventDefault()
-
-      // 按住Ctrl键时：缩放画布
-      if (ctrlKeyState.value) {
-        if (e.deltaY > 0) throttleScaleCanvas('-')
-        else if (e.deltaY < 0) throttleScaleCanvas('+')
-      }
-      // 上下翻页
-      else {
-        if (e.deltaY > 0) throttleUpdateSlideIndex(KEYS.DOWN)
-        else if (e.deltaY < 0) throttleUpdateSlideIndex(KEYS.UP)
-      }
-    }
-
-    // 开关网格线
-    const showGridLines = computed(() => store.state.showGridLines)
-    const toggleGridLines = () => {
-      store.commit(MutationTypes.SET_GRID_LINES_STATE, !showGridLines.value)
-    }
-
-    // 在鼠标绘制的范围插入元素
-    const creatingElement = computed(() => store.state.creatingElement)
-    const { insertElementFromCreateSelection } = useInsertFromCreateSelection(viewportRef)
-
-    const contextmenus = (): ContextmenuItem[] => {
-      return [
-        {
-          text: '粘贴',
-          subText: 'Ctrl + V',
-          handler: pasteElement,
-        },
-        {
-          text: '全选',
-          subText: 'Ctrl + A',
-          handler: selectAllElement,
-        },
-        {
-          text: '网格线',
-          subText: showGridLines.value ? '√' : '',
-          handler: toggleGridLines,
-        },
-        {
-          text: '重置当前页',
-          handler: deleteAllElements,
-        },
-        { divider: true },
-        {
-          text: '从当前页演示',
-          subText: 'Ctrl+F',
-          handler: enterScreening,
-        },
-      ]
-    }
-
-    provide('slideScale', canvasScale)
-
-    return {
-      elementList,
-      activeElementIdList,
-      handleElementId,
-      activeGroupElementId,
-      canvasRef,
-      viewportRef,
-      viewportStyles,
-      canvasScale,
-      mouseSelectionState,
-      handleClickBlankArea,
-      removeEditorAreaFocus,
-      currentSlide,
-      creatingElement,
-      insertElementFromCreateSelection,
-      alignmentLines,
-      selectElement,
-      rotateElement,
-      scaleElement,
-      dragLineElement,
-      scaleMultiElement,
-      handleMousewheelCanvas,
-      contextmenus,
-    }
-  },
+watch(handleElementId, () => {
+  mainStore.setActiveGroupElementId('')
 })
+
+const elementList = ref<PPTElement[]>([])
+const setLocalElementList = () => {
+  elementList.value = currentSlide.value ? JSON.parse(JSON.stringify(currentSlide.value.elements)) : []
+}
+watchEffect(setLocalElementList)
+
+const canvasRef = ref<HTMLElement>()
+const { dragViewport, viewportStyles } = useViewportSize(canvasRef)
+
+useDropImageOrText(canvasRef)
+
+const { mouseSelection, mouseSelectionVisible, mouseSelectionQuadrant, updateMouseSelection } = useMouseSelection(elementList, viewportRef)
+
+const { dragElement } = useDragElement(elementList, alignmentLines, canvasScale)
+const { dragLineElement } = useDragLineElement(elementList)
+const { selectElement } = useSelectElement(elementList, dragElement)
+const { scaleElement, scaleMultiElement } = useScaleElement(elementList, alignmentLines, canvasScale)
+const { rotateElement } = useRotateElement(elementList, viewportRef)
+const { moveShapeKeypoint } = useMoveShapeKeypoint(elementList, canvasScale)
+
+const { selectAllElement } = useSelectAllElement()
+const { deleteAllElements } = useDeleteElement()
+const { pasteElement } = useCopyAndPasteElement()
+const { enterScreeningFromStart } = useScreening()
+const { updateSlideIndex } = useSlideHandler()
+
+// 组件渲染时，如果存在元素焦点，需要清除
+// 这种情况存在于：有焦点元素的情况下进入了放映模式，再退出时，需要清除原先的焦点（因为可能已经切换了页面）
+onMounted(() => {
+  if (activeElementIdList.value.length) {
+    nextTick(() => mainStore.setActiveElementIdList([]))
+  }
+})
+
+// 点击画布的空白区域：清空焦点元素、设置画布焦点、清除文字选区、清空格式刷状态
+const handleClickBlankArea = (e: MouseEvent) => {
+  if (activeElementIdList.value.length) mainStore.setActiveElementIdList([])
+
+  if (!spaceKeyState.value) updateMouseSelection(e)
+  else dragViewport(e)
+
+  if (!editorAreaFocus.value) mainStore.setEditorareaFocus(true)
+  if (textFormatPainter.value) mainStore.setTextFormatPainter(null)
+  removeAllRanges()
+}
+
+// 画布注销时清空格式刷状态
+onUnmounted(() => {
+  if (textFormatPainter.value) mainStore.setTextFormatPainter(null)
+})
+
+// 移除画布编辑区域焦点
+const removeEditorAreaFocus = () => {
+  if (editorAreaFocus.value) mainStore.setEditorareaFocus(false)
+}
+
+// 滚动鼠标
+const { scaleCanvas } = useScaleCanvas()
+const throttleScaleCanvas = throttle(scaleCanvas, 100, { leading: true, trailing: false })
+const throttleUpdateSlideIndex = throttle(updateSlideIndex, 300, { leading: true, trailing: false })
+
+const handleMousewheelCanvas = (e: WheelEvent) => {
+  e.preventDefault()
+
+  // 按住Ctrl键时：缩放画布
+  if (ctrlKeyState.value) {
+    if (e.deltaY > 0) throttleScaleCanvas('-')
+    else if (e.deltaY < 0) throttleScaleCanvas('+')
+  }
+  // 上下翻页
+  else {
+    if (e.deltaY > 0) throttleUpdateSlideIndex(KEYS.DOWN)
+    else if (e.deltaY < 0) throttleUpdateSlideIndex(KEYS.UP)
+  }
+}
+
+// 开关标尺
+const toggleRuler = () => {
+  mainStore.setRulerState(!showRuler.value)
+}
+
+// 在鼠标绘制的范围插入元素
+const { insertElementFromCreateSelection } = useInsertFromCreateSelection(viewportRef)
+
+const contextmenus = (): ContextmenuItem[] => {
+  return [
+    {
+      text: '粘贴',
+      subText: 'Ctrl + V',
+      handler: pasteElement,
+    },
+    {
+      text: '全选',
+      subText: 'Ctrl + A',
+      handler: selectAllElement,
+    },
+    {
+      text: '标尺',
+      subText: showRuler.value ? '√' : '',
+      handler: toggleRuler,
+    },
+    {
+      text: '网格线',
+      handler: () => mainStore.setGridLineSize(gridLineSize.value ? 0 : 50),
+      children: [
+        {
+          text: '无',
+          subText: gridLineSize.value === 0 ? '√' : '',
+          handler: () => mainStore.setGridLineSize(0),
+        },
+        {
+          text: '小',
+          subText: gridLineSize.value === 25 ? '√' : '',
+          handler: () => mainStore.setGridLineSize(25),
+        },
+        {
+          text: '中',
+          subText: gridLineSize.value === 50 ? '√' : '',
+          handler: () => mainStore.setGridLineSize(50),
+        },
+        {
+          text: '大',
+          subText: gridLineSize.value === 100 ? '√' : '',
+          handler: () => mainStore.setGridLineSize(100),
+        },
+      ],
+    },
+    {
+      text: showSelectPanel.value ? '关闭选择面板' : '打开选择面板',
+      handler: () => {
+        if (!showSelectPanel.value) mainStore.setSelectPanelState(true)
+        else mainStore.setSelectPanelState(false)
+      },
+    },
+    {
+      text: '重置当前页',
+      handler: deleteAllElements,
+    },
+    { divider: true },
+    {
+      text: '幻灯片放映',
+      subText: 'F5',
+      handler: enterScreeningFromStart,
+    },
+  ]
+}
+
+provide(injectKeySlideScale, canvasScale)
 </script>
 
 <style lang="scss" scoped>
@@ -274,6 +318,10 @@ export default defineComponent({
   overflow: hidden;
   background-color: $lightGray;
   position: relative;
+}
+.drag-mask {
+  cursor: grab;
+  @include absolute-0();
 }
 .viewport-wrapper {
   position: absolute;

@@ -1,17 +1,30 @@
 import { computed } from 'vue'
-import { MutationTypes, useStore } from '@/store'
-import { PPTElement, Slide } from '@/types/slides'
-import { createRandomCode } from '@/utils/common'
+import { storeToRefs } from 'pinia'
+import { nanoid } from 'nanoid'
+import { useMainStore, useSlidesStore } from '@/store'
+import { PPTElement } from '@/types/slides'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 export default () => {
-  const store = useStore()
-  const activeElementIdList = computed(() => store.state.activeElementIdList)
-  const activeElementList = computed<PPTElement[]>(() => store.getters.activeElementList)
-  const currentSlide = computed<Slide>(() => store.getters.currentSlide)
-  const handleElementId = computed(() => store.state.handleElementId)
+  const mainStore = useMainStore()
+  const slidesStore = useSlidesStore()
+  const { activeElementIdList, activeElementList, handleElementId } = storeToRefs(mainStore)
+  const { currentSlide } = storeToRefs(slidesStore)
 
   const { addHistorySnapshot } = useHistorySnapshot()
+
+  /**
+   * 判断当前选中的元素是否可以组合
+   */
+  const canCombine = computed(() => {
+    if (activeElementList.value.length < 2) return false
+
+    const firstGroupId = activeElementList.value[0].groupId
+    if (!firstGroupId) return true
+
+    const inSameGroup = activeElementList.value.every(el => (el.groupId && el.groupId) === firstGroupId)
+    return !inSameGroup
+  })
 
   /**
    * 组合当前选中的元素：给当前选中的元素赋予一个相同的分组ID
@@ -23,7 +36,7 @@ export default () => {
     let newElementList: PPTElement[] = JSON.parse(JSON.stringify(currentSlide.value.elements))
 
     // 生成分组ID
-    const groupId = createRandomCode()
+    const groupId = nanoid(10)
 
     // 收集需要组合的元素列表，并赋上唯一分组ID
     const combineElementList: PPTElement[] = []
@@ -44,7 +57,7 @@ export default () => {
     const insertLevel = combineElementMaxLevel - combineElementList.length + 1
     newElementList.splice(insertLevel, 0, ...combineElementList)
 
-    store.commit(MutationTypes.UPDATE_SLIDE, { elements: newElementList })
+    slidesStore.updateSlide({ elements: newElementList })
     addHistorySnapshot()
   }
 
@@ -60,16 +73,18 @@ export default () => {
     for (const element of newElementList) {
       if (activeElementIdList.value.includes(element.id) && element.groupId) delete element.groupId
     }
-    store.commit(MutationTypes.UPDATE_SLIDE, { elements: newElementList })
+    slidesStore.updateSlide({ elements: newElementList })
 
     // 取消组合后，需要重置激活元素状态
     // 默认重置为当前正在操作的元素,如果不存在则重置为空
     const handleElementIdList = handleElementId.value ? [handleElementId.value] : []
-    store.commit(MutationTypes.SET_ACTIVE_ELEMENT_ID_LIST, handleElementIdList)
+    mainStore.setActiveElementIdList(handleElementIdList)
+
     addHistorySnapshot()
   }
 
   return {
+    canCombine,
     combineElements,
     uncombineElements,
   }

@@ -1,11 +1,13 @@
-import { PPTElement } from '@/types/slides'
+import tinycolor from 'tinycolor2'
+import { nanoid } from 'nanoid'
+import { PPTElement, PPTLineElement, Slide } from '@/types/slides'
 
 interface RotatedElementData {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-  rotate: number;
+  left: number
+  top: number
+  width: number
+  height: number
+  rotate: number
 }
 
 /**
@@ -125,8 +127,8 @@ export const getElementListRange = (elementList: PPTElement[]) => {
 }
 
 export interface AlignLine {
-  value: number;
-  range: [number, number];
+  value: number
+  range: [number, number]
 }
 
 /**
@@ -148,4 +150,75 @@ export const uniqAlignLines = (lines: AlignLine[]) => {
     }
   })
   return uniqLines
+}
+
+/**
+ * 以页面列表为基础，为每一个页面生成新的ID，并关联到旧ID形成一个字典
+ * 主要用于页面元素时，维持数据中各处页面ID原有的关系
+ * @param slides 页面列表
+ */
+export const createSlideIdMap = (slides: Slide[]) => {
+  const slideIdMap = {}
+  for (const slide of slides) {
+    slideIdMap[slide.id] = nanoid(10)
+  }
+  return slideIdMap
+}
+
+/**
+   * 以元素列表为基础，为每一个元素生成新的ID，并关联到旧ID形成一个字典
+   * 主要用于复制元素时，维持数据中各处元素ID原有的关系
+   * 例如：原本两个组合的元素拥有相同的groupId，复制后依然会拥有另一个相同的groupId
+   * @param elements 元素列表数据
+   */
+export const createElementIdMap = (elements: PPTElement[]) => {
+  const groupIdMap = {}
+  const elIdMap = {}
+  for (const element of elements) {
+    const groupId = element.groupId
+    if (groupId && !groupIdMap[groupId]) {
+      groupIdMap[groupId] = nanoid(10)
+    }
+    elIdMap[element.id] = nanoid(10)
+  }
+  return {
+    groupIdMap,
+    elIdMap,
+  }
+}
+
+/**
+ * 根据表格的主题色，获取对应用于配色的子颜色
+ * @param themeColor 主题色
+ */
+export const getTableSubThemeColor = (themeColor: string) => {
+  const rgba = tinycolor(themeColor)
+  return [
+    rgba.setAlpha(0.3).toRgbString(),
+    rgba.setAlpha(0.1).toRgbString(),
+  ]
+}
+
+/**
+ * 获取线条元素路径字符串
+ * @param element 线条元素
+ */
+export const getLineElementPath = (element: PPTLineElement) => {
+  const start = element.start.join(',')
+  const end = element.end.join(',')
+  if (element.broken) {
+    const mid = element.broken.join(',')
+    return `M${start} L${mid} L${end}`
+  }
+  else if (element.curve) {
+    const mid = element.curve.join(',')
+    return `M${start} Q${mid} ${end}`
+  }
+  else if (element.cubic) {
+    const [c1, c2] = element.cubic
+    const p1 = c1.join(',')
+    const p2 = c2.join(',')
+    return `M${start} C${p1} ${p2} ${end}`
+  }
+  return `M${start} L${end}`
 }

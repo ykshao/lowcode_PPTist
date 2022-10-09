@@ -1,11 +1,11 @@
 <template>
   <div class="line-pool">
-    <div class="category" v-for="item in lineList" :key="item.type">
+    <div class="category" v-for="(item, i) in LINE_LIST" :key="item.type">
       <div class="category-name">{{item.type}}</div>
       <div class="line-list">
-        <div class="line-item" v-for="(line, index) in item.children" :key="index">
+        <div class="line-item" v-for="(line, j) in item.children" :key="j">
           <div class="line-content" @click="selectLine(line)">
-            <SvgWrapper
+            <svg
               overflow="visible" 
               width="20"
               height="20"
@@ -14,7 +14,7 @@
                 <LinePointMarker
                   class="line-marker"
                   v-if="line.points[0]"
-                  :id="`preset-line-${index}`"
+                  :id="`preset-line-${i}-${j}`"
                   position="start"
                   :type="line.points[0]"
                   color="currentColor"
@@ -23,7 +23,7 @@
                 <LinePointMarker
                   class="line-marker"
                   v-if="line.points[1]"
-                  :id="`preset-line-${index}`"
+                  :id="`preset-line-${i}-${j}`"
                   position="end"
                   :type="line.points[1]"
                   color="currentColor"
@@ -37,13 +37,10 @@
                 fill="none" 
                 stroke-width="2" 
                 :stroke-dasharray="line.style === 'solid' ? '0, 0' : '4, 1'"
-                stroke-linecap 
-                stroke-linejoin 
-                stroke-miterlimit 
-                :marker-start="line.points[0] ? `url(#${`preset-line-${index}`}-${line.points[0]}-start)` : ''"
-                :marker-end="line.points[1] ? `url(#${`preset-line-${index}`}-${line.points[1]}-end)` : ''"
+                :marker-start="line.points[0] ? `url(#${`preset-line-${i}-${j}`}-${line.points[0]}-start)` : ''"
+                :marker-end="line.points[1] ? `url(#${`preset-line-${i}-${j}`}-${line.points[1]}-end)` : ''"
               ></path>
-            </SvgWrapper>
+            </svg>
           </div>
         </div>
       </div>
@@ -51,30 +48,18 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue'
+<script lang="ts" setup>
 import { LINE_LIST, LinePoolItem } from '@/configs/lines'
 
 import LinePointMarker from '@/views/components/element/LineElement/LinePointMarker.vue'
 
-export default defineComponent({
-  name: 'line-pool',
-  components: {
-    LinePointMarker,
-  },
-  setup(props, { emit }) {
-    const lineList = LINE_LIST
+const emit = defineEmits<{
+  (event: 'select', payload: LinePoolItem): void
+}>()
 
-    const selectLine = (line: LinePoolItem) => {
-      emit('select', line)
-    }
-
-    return {
-      lineList,
-      selectLine,
-    }
-  },
-})
+const selectLine = (line: LinePoolItem) => {
+  emit('select', line)
+}
 </script>
 
 <style lang="scss" scoped>

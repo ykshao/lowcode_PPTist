@@ -2,84 +2,90 @@
   <div 
     class="custom-textarea"
     ref="textareaRef"
-    :contenteditable="contenteditable"
     @focus="handleFocus"
     @blur="handleBlur"
-    @input="$event => handleInput($event)"
+    @input="handleInput()"
     v-html="text"
   ></div>
 </template>
 
-<script lang="ts">
-import { defineComponent, onUnmounted, ref, watch } from 'vue'
+<script lang="ts" setup>
+import { onUnmounted, ref, watch } from 'vue'
+import { pasteCustomClipboardString, pasteExcelClipboardString } from '@/utils/clipboard'
 
-export default defineComponent({
-  name: 'custom-textarea',
-  props: {
-    value: {
-      type: String,
-      default: '',
-    },
-    contenteditable: {
-      type: [Boolean, String],
-      default: false,
-    },
+const props = defineProps({
+  value: {
+    type: String,
+    default: '',
   },
-  setup(props, { emit }) {
-    const textareaRef = ref<HTMLElement>()
-    const text = ref('')
-    const isFocus = ref(false)
+  contenteditable: {
+    type: [Boolean, String],
+    default: false,
+  },
+})
 
-    // 自定义v-modal，同步数据
-    // 当文本框聚焦时，不执行数据同步
-    watch(() => props.value, () => {
-      if (isFocus.value) return
-      text.value = props.value
-      if (textareaRef.value) textareaRef.value.innerHTML = props.value
-    }, { immediate: true })
+const emit = defineEmits<{
+  (event: 'updateValue', payload: string): void
+  (event: 'insertExcelData', payload: string[][]): void
+}>()
 
-    const handleInput = () => {
-      if (!textareaRef.value) return
-      const text = textareaRef.value.innerHTML
-      emit('updateValue', text)
-    }
+const textareaRef = ref<HTMLElement>()
+const text = ref('')
+const isFocus = ref(false)
 
-    // 聚焦时更新焦点标记，并监听粘贴事件
-    const handleFocus = () => {
-      isFocus.value = true
+// 自定义v-modal，同步数据
+// 当文本框聚焦时，不执行数据同步
+watch(() => props.value, () => {
+  if (isFocus.value) return
+  text.value = props.value
+  if (textareaRef.value) textareaRef.value.innerHTML = props.value
+}, { immediate: true })
 
-      if (!textareaRef.value) return
-      textareaRef.value.onpaste = (e: ClipboardEvent) => {
-        e.preventDefault()
-        if (!e.clipboardData) return
+const handleInput = () => {
+  if (!textareaRef.value) return
+  const text = textareaRef.value.innerHTML
+  emit('updateValue', text)
+}
 
-        const clipboardDataFirstItem = e.clipboardData.items[0]
+// 聚焦时更新焦点标记，并监听粘贴事件
+const handleFocus = () => {
+  isFocus.value = true
 
-        if (clipboardDataFirstItem && clipboardDataFirstItem.kind === 'string' && clipboardDataFirstItem.type === 'text/plain') {
-          clipboardDataFirstItem.getAsString(text => emit('updateValue', text))
+  if (!textareaRef.value) return
+  textareaRef.value.onpaste = (e: ClipboardEvent) => {
+    e.preventDefault()
+    if (!e.clipboardData) return
+
+    const clipboardDataFirstItem = e.clipboardData.items[0]
+
+    if (clipboardDataFirstItem && clipboardDataFirstItem.kind === 'string' && clipboardDataFirstItem.type === 'text/plain') {
+      clipboardDataFirstItem.getAsString(text => {
+        const clipboardData = pasteCustomClipboardString(text)
+        if (typeof clipboardData === 'object') return
+ 
+        const excelData = pasteExcelClipboardString(text)
+        if (excelData) {
+          emit('insertExcelData', excelData)
+          if (textareaRef.value) textareaRef.value.innerHTML = excelData[0][0]
+          return
         }
-      }
-    }
 
-    // 失焦时更新焦点标记，清除粘贴事件监听
-    const handleBlur = () => {
-      isFocus.value = false
-      if (textareaRef.value) textareaRef.value.onpaste = null
+        emit('updateValue', text)
+        document.execCommand('insertText', false, text)
+      })
     }
+  }
+}
 
-    // 清除粘贴事件监听
-    onUnmounted(() => {
-      if (textareaRef.value) textareaRef.value.onpaste = null
-    })
+// 失焦时更新焦点标记，清除粘贴事件监听
+const handleBlur = () => {
+  isFocus.value = false
+  if (textareaRef.value) textareaRef.value.onpaste = null
+}
 
-    return {
-      textareaRef,
-      handleFocus,
-      handleInput,
-      handleBlur,
-      text,
-    }
-  },
+// 清除粘贴事件监听
+onUnmounted(() => {
+  if (textareaRef.value) textareaRef.value.onpaste = null
 })
 </script>
 
@@ -87,5 +93,7 @@ export default defineComponent({
 .custom-textarea {
   border: 0;
   outline: 0;
+  -webkit-user-modify: read-write-plaintext-only;
+  -moz-user-modify: read-write-plaintext-only;
 }
 </style>

@@ -10,8 +10,10 @@
     <div 
       class="element-content" 
       :style="{ filter: shadowStyle ? `drop-shadow(${shadowStyle})` : '' }"
+      @mousedown="$event => handleSelectElement($event)"
+      @touchstart="$event => handleSelectElement($event)"
     >
-      <SvgWrapper
+      <svg
         overflow="visible" 
         :width="svgWidth"
         :height="svgHeight"
@@ -35,14 +37,12 @@
           />
         </defs>
 				<path
+          class="line-point"
           :d="path" 
           :stroke="elementInfo.color" 
           :stroke-width="elementInfo.width" 
           :stroke-dasharray="lineDashArray"
           fill="none" 
-          stroke-linecap 
-          stroke-linejoin 
-          stroke-miterlimit 
           :marker-start="elementInfo.points[0] ? `url(#${elementInfo.id}-${elementInfo.points[0]}-start)` : ''"
           :marker-end="elementInfo.points[1] ? `url(#${elementInfo.id}-${elementInfo.points[1]}-end)` : ''"
         ></path>
@@ -52,94 +52,71 @@
           stroke="transparent" 
           stroke-width="20" 
           fill="none" 
-          @mousedown="$event => handleSelectElement($event)"
           v-contextmenu="contextmenus"
         ></path>
-			</SvgWrapper>
+			</svg>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, PropType } from 'vue'
+<script lang="ts" setup>
+import { computed, PropType } from 'vue'
 import { PPTLineElement } from '@/types/slides'
+import { getLineElementPath } from '@/utils/element'
 import { ContextmenuItem } from '@/components/Contextmenu/types'
 import useElementShadow from '@/views/components/element/hooks/useElementShadow'
 
 import LinePointMarker from './LinePointMarker.vue'
 
-export default defineComponent({
-  name: 'editable-element-shape',
-  components: {
-    LinePointMarker,
+const props = defineProps({
+  elementInfo: {
+    type: Object as PropType<PPTLineElement>,
+    required: true,
   },
-  props: {
-    elementInfo: {
-      type: Object as PropType<PPTLineElement>,
-      required: true,
-    },
-    selectElement: {
-      type: Function as PropType<(e: MouseEvent, element: PPTLineElement, canMove?: boolean) => void>,
-      required: true,
-    },
-    contextmenus: {
-      type: Function as PropType<() => ContextmenuItem[]>,
-    },
+  selectElement: {
+    type: Function as PropType<(e: MouseEvent | TouchEvent, element: PPTLineElement, canMove?: boolean) => void>,
+    required: true,
   },
-  setup(props) {
-    const handleSelectElement = (e: MouseEvent) => {
-      if (props.elementInfo.lock) return
-      e.stopPropagation()
-
-      props.selectElement(e, props.elementInfo)
-    }
-    
-    const shadow = computed(() => props.elementInfo.shadow)
-    const { shadowStyle } = useElementShadow(shadow)
-
-    const svgWidth = computed(() => {
-      const width = Math.abs(props.elementInfo.start[0] - props.elementInfo.end[0])
-      return width < 24 ? 24 : width
-    })
-    const svgHeight = computed(() => {
-      const height = Math.abs(props.elementInfo.start[1] - props.elementInfo.end[1])
-      return height < 24 ? 24 : height
-    })
-
-    const lineDashArray = computed(() => props.elementInfo.style === 'dashed' ? '10 6' : '0 0')
-
-    const path = computed(() => {
-      const start = props.elementInfo.start.join(',')
-      const end = props.elementInfo.end.join(',')
-      if (props.elementInfo.broken) {
-        const mid = props.elementInfo.broken.join(',')
-        return `M${start} L${mid} L${end}`
-      }
-      if (props.elementInfo.curve) {
-        const mid = props.elementInfo.curve.join(',')
-        return `M${start} Q${mid} ${end}`
-      }
-      return `M${start} L${end}`
-    })
-
-    return {
-      handleSelectElement,
-      shadowStyle,
-      svgWidth,
-      svgHeight,
-      lineDashArray,
-      path,
-    }
+  contextmenus: {
+    type: Function as PropType<() => ContextmenuItem[] | null>,
   },
+})
+
+const handleSelectElement = (e: MouseEvent | TouchEvent) => {
+  if (props.elementInfo.lock) return
+  e.stopPropagation()
+
+  props.selectElement(e, props.elementInfo)
+}
+
+const shadow = computed(() => props.elementInfo.shadow)
+const { shadowStyle } = useElementShadow(shadow)
+
+const svgWidth = computed(() => {
+  const width = Math.abs(props.elementInfo.start[0] - props.elementInfo.end[0])
+  return width < 24 ? 24 : width
+})
+const svgHeight = computed(() => {
+  const height = Math.abs(props.elementInfo.start[1] - props.elementInfo.end[1])
+  return height < 24 ? 24 : height
+})
+
+const lineDashArray = computed(() => props.elementInfo.style === 'dashed' ? '10 6' : '0 0')
+
+const path = computed(() => {
+  return getLineElementPath(props.elementInfo)
 })
 </script>
 
 <style lang="scss" scoped>
 .editable-element-shape {
   position: absolute;
+  pointer-events: none;
 
-  &.lock .line-path {
-    cursor: default;
+  &.lock {
+    .line-path, .line-point {
+      cursor: default;
+    }
   }
 }
 
@@ -153,7 +130,8 @@ export default defineComponent({
     overflow: visible;
   }
 }
-.line-path {
+.line-path, .line-point {
+  pointer-events: all;
   cursor: move;
 }
 </style>

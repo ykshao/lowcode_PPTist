@@ -16,57 +16,50 @@
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent } from 'vue'
-import { MutationTypes, useStore } from '@/store'
-import { Slide } from '@/types/slides'
+<script lang="ts" setup>
+import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useSlidesStore } from '@/store'
+import { TurningMode } from '@/types/slides'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
-export default defineComponent({
-  name: 'slide-animation-panel',
-  setup() {
-    const store = useStore()
-    const slides = computed(() => store.state.slides)
-    const currentSlide = computed<Slide>(() => store.getters.currentSlide)
+interface Animations {
+  label: string
+  value: TurningMode
+}
 
-    const currentTurningMode = computed(() => currentSlide.value.turningMode || 'slideY')
+const slidesStore = useSlidesStore()
+const { slides, currentSlide } = storeToRefs(slidesStore)
 
-    const animations = [
-      { label: '无', value: 'no' },
-      { label: '淡入淡出', value: 'fade' },
-      { label: '左右推移', value: 'slideX' },
-      { label: '上下推移', value: 'slideY' },
-    ]
+const currentTurningMode = computed(() => currentSlide.value.turningMode || 'slideY')
 
-    const { addHistorySnapshot } = useHistorySnapshot()
+const animations: Animations[] = [
+  { label: '无', value: 'no' },
+  { label: '淡入淡出', value: 'fade' },
+  { label: '左右推移', value: 'slideX' },
+  { label: '上下推移', value: 'slideY' },
+]
 
-    // 修改播放时的切换页面方式
-    const updateTurningMode = (mode: string) => {
-      if (mode === currentTurningMode.value) return
-      store.commit(MutationTypes.UPDATE_SLIDE, { turningMode: mode })
-      addHistorySnapshot()
-    }
+const { addHistorySnapshot } = useHistorySnapshot()
 
-    // 将当前页的切换页面方式应用到全部页面
-    const applyAllSlide = () => {
-      const newSlides = slides.value.map(slide => {
-        return {
-          ...slide,
-          turningMode: currentSlide.value.turningMode,
-        }
-      })
-      store.commit(MutationTypes.SET_SLIDES, newSlides)
-      addHistorySnapshot()
-    }
+// 修改播放时的切换页面方式
+const updateTurningMode = (mode: TurningMode) => {
+  if (mode === currentTurningMode.value) return
+  slidesStore.updateSlide({ turningMode: mode })
+  addHistorySnapshot()
+}
 
+// 将当前页的切换页面方式应用到全部页面
+const applyAllSlide = () => {
+  const newSlides = slides.value.map(slide => {
     return {
-      currentTurningMode,
-      animations,
-      updateTurningMode,
-      applyAllSlide,
+      ...slide,
+      turningMode: currentSlide.value.turningMode,
     }
-  },
-})
+  })
+  slidesStore.setSlides(newSlides)
+  addHistorySnapshot()
+}
 </script>
 
 <style lang="scss" scoped>

@@ -1,12 +1,12 @@
-import { computed, Ref } from 'vue'
-import { MutationTypes, useStore } from '@/store'
+import { Ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMainStore } from '@/store'
 import { CreateElementSelectionData, CreatingLineElement, CreatingShapeElement } from '@/types/edit'
 import useCreateElement from '@/hooks/useCreateElement'
 
 export default (viewportRef: Ref<HTMLElement | undefined>) => {
-  const store = useStore()
-  const canvasScale = computed(() => store.state.canvasScale)
-  const creatingElement = computed(() => store.state.creatingElement)
+  const mainStore = useMainStore()
+  const { canvasScale, creatingElement } = storeToRefs(mainStore)
 
   // 通过鼠标框选时的起点和终点，计算选区的位置大小
   const formatCreateSelection = (selectionData: CreateElementSelectionData) => {
@@ -75,17 +75,17 @@ export default (viewportRef: Ref<HTMLElement | undefined>) => {
     const type = creatingElement.value.type
     if (type === 'text') {
       const position = formatCreateSelection(selectionData)
-      position && createTextElement(position)
+      position && createTextElement(position, { vertical: creatingElement.value.vertical })
     }
     else if (type === 'shape') {
       const position = formatCreateSelection(selectionData)
-      position && createShapeElement(position, (creatingElement.value as CreatingShapeElement).data)
+      position && createShapeElement(position, creatingElement.value.data)
     }
     else if (type === 'line') {
       const position = formatCreateSelectionForLine(selectionData)
-      position && createLineElement(position, (creatingElement.value as CreatingLineElement).data)
+      position && createLineElement(position, creatingElement.value.data)
     }
-    store.commit(MutationTypes.SET_CREATING_ELEMENT, null)
+    mainStore.setCreatingElement(null)
   }
 
   return {

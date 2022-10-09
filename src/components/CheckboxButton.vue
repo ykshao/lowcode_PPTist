@@ -4,16 +4,13 @@
   </button>
 </template>
 
-<script lang="ts">
-export default {
-  name: 'checkbox-button',
-  props: {
-    checked: {
-      type: Boolean,
-      default: false,
-    },
+<script lang="ts" setup>
+defineProps({
+  checked: {
+    type: Boolean,
+    default: false,
   },
-}
+})
 </script>
 
 <style lang="scss" scoped>

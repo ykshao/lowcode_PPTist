@@ -14,52 +14,53 @@
       :elementInfo="element"
       :elementIndex="index + 1"
       :animationIndex="animationIndex"
+      :turnSlideToId="turnSlideToId"
+      :manualExitFullscreen="manualExitFullscreen"
     />
   </div>
 </template>
 
-<script lang="ts">
-import { computed, PropType, defineComponent } from 'vue'
-import { useStore } from '@/store'
+<script lang="ts" setup>
+import { computed, PropType, provide } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useSlidesStore } from '@/store'
 import { Slide } from '@/types/slides'
+import { injectKeySlideId } from '@/types/injectKey'
 import { VIEWPORT_SIZE } from '@/configs/canvas'
 import useSlideBackgroundStyle from '@/hooks/useSlideBackgroundStyle'
 
 import ScreenElement from './ScreenElement.vue'
 
-export default defineComponent({
-  name: 'screen-slide',
-  components: {
-    ScreenElement,
+const props = defineProps({
+  slide: {
+    type: Object as PropType<Slide>,
+    required: true,
   },
-  props: {
-    slide: {
-      type: Object as PropType<Slide>,
-      required: true,
-    },
-    scale: {
-      type: Number,
-      required: true,
-    },
-    animationIndex: {
-      type: Number,
-      default: -1,
-    },
+  scale: {
+    type: Number,
+    required: true,
   },
-  setup(props) {
-    const store = useStore()
-    const viewportRatio = computed(() => store.state.viewportRatio)
-
-    const background = computed(() => props.slide.background)
-    const { backgroundStyle } = useSlideBackgroundStyle(background)
-
-    return {
-      backgroundStyle,
-      VIEWPORT_SIZE,
-      viewportRatio,
-    }
+  animationIndex: {
+    type: Number,
+    required: true,
+  },
+  turnSlideToId: {
+    type: Function as PropType<(id: string) => void>,
+    required: true,
+  },
+  manualExitFullscreen: {
+    type: Function as PropType<() => void>,
+    required: true,
   },
 })
+
+const { viewportRatio } = storeToRefs(useSlidesStore())
+
+const background = computed(() => props.slide.background)
+const { backgroundStyle } = useSlideBackgroundStyle(background)
+
+const slideId = computed(() => props.slide.id)
+provide(injectKeySlideId, slideId)
 </script>
 
 <style lang="scss" scoped>
@@ -68,6 +69,7 @@ export default defineComponent({
   top: 0;
   left: 0;
   transform-origin: 0 0;
+  overflow: hidden;
 }
 .background {
   width: 100%;

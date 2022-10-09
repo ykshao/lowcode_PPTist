@@ -6,7 +6,6 @@
       left: elementInfo.left + 'px',
       width: elementInfo.width + 'px',
       height: elementInfo.height + 'px',
-      transform: `rotate(${elementInfo.rotate}deg)`,
     }"
   >
     <div
@@ -35,14 +34,21 @@
             }" 
             alt=""
           />
+          <div class="color-mask"
+            v-if="elementInfo.colorMask"
+            :style="{
+              backgroundColor: elementInfo.colorMask.color,
+              opacity: elementInfo.colorMask.opacity,
+            }"
+          ></div>
         </div>
       </div>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, PropType } from 'vue'
+<script lang="ts" setup>
+import { computed, PropType } from 'vue'
 import { PPTImageElement } from '@/types/slides'
 import useElementShadow from '@/views/components/element/hooks/useElementShadow'
 import useElementFlip from '@/views/components/element/hooks/useElementFlip'
@@ -51,40 +57,25 @@ import useFilter from './useFilter'
 
 import ImageOutline from './ImageOutline/index.vue'
 
-export default defineComponent({
-  name: 'base-element-image',
-  components: {
-    ImageOutline,
-  },
-  props: {
-    elementInfo: {
-      type: Object as PropType<PPTImageElement>,
-      required: true,
-    },
-  },
-  setup(props) {
-    const shadow = computed(() => props.elementInfo.shadow)
-    const { shadowStyle } = useElementShadow(shadow)
-
-    const flipH = computed(() => props.elementInfo.flipH)
-    const flipV = computed(() => props.elementInfo.flipV)
-    const { flipStyle } = useElementFlip(flipH, flipV)
-    
-    const clip = computed(() => props.elementInfo.clip)
-    const { clipShape, imgPosition } = useClipImage(clip)
-
-    const filters = computed(() => props.elementInfo.filters)
-    const { filter } = useFilter(filters)
-
-    return {
-      imgPosition,
-      filter,
-      flipStyle,
-      shadowStyle,
-      clipShape,
-    }
+const props = defineProps({
+  elementInfo: {
+    type: Object as PropType<PPTImageElement>,
+    required: true,
   },
 })
+
+const shadow = computed(() => props.elementInfo.shadow)
+const { shadowStyle } = useElementShadow(shadow)
+
+const flipH = computed(() => props.elementInfo.flipH)
+const flipV = computed(() => props.elementInfo.flipV)
+const { flipStyle } = useElementFlip(flipH, flipV)
+
+const clip = computed(() => props.elementInfo.clip)
+const { clipShape, imgPosition } = useClipImage(clip)
+
+const filters = computed(() => props.elementInfo.filters)
+const { filter } = useFilter(filters)
 </script>
 
 <style lang="scss" scoped>
@@ -110,5 +101,12 @@ export default defineComponent({
   img {
     position: absolute;
   }
+}
+.color-mask {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 </style>

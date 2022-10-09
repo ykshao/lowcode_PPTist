@@ -15,76 +15,81 @@
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, watch } from 'vue'
-import { MutationTypes, useStore } from '@/store'
-import { ToolbarState, ToolbarStates } from '@/types/toolbar'
+<script lang="ts" setup>
+import { computed, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMainStore } from '@/store'
+import { ToolbarStates } from '@/types/toolbar'
 
 import ElementStylePanel from './ElementStylePanel/index.vue'
 import ElementPositionPanel from './ElementPositionPanel.vue'
 import ElementAnimationPanel from './ElementAnimationPanel.vue'
-import SlideStylePanel from './SlideStylePanel.vue'
+import SlideDesignPanel from './SlideDesignPanel.vue'
 import SlideAnimationPanel from './SlideAnimationPanel.vue'
 import MultiPositionPanel from './MultiPositionPanel.vue'
+import SymbolPanel from './SymbolPanel.vue'
 
-export default defineComponent({
-  name: 'toolbar',
-  setup() {
-    const store = useStore()
-    const toolbarState = computed(() => store.state.toolbarState)
+interface ElementTabs {
+  label: string
+  value: ToolbarStates
+}
 
-    const elementTabs = [
+const mainStore = useMainStore()
+const { activeElementIdList, handleElement, toolbarState } = storeToRefs(mainStore)
+
+const elementTabs = computed<ElementTabs[]>(() => {
+  if (handleElement.value?.type === 'text') {
+    return [
       { label: '样式', value: ToolbarStates.EL_STYLE },
+      { label: '符号', value: ToolbarStates.SYMBOL },
       { label: '位置', value: ToolbarStates.EL_POSITION },
       { label: '动画', value: ToolbarStates.EL_ANIMATION },
     ]
-    const slideTabs = [
-      { label: '页面样式', value: ToolbarStates.SLIDE_STYLE },
-      { label: '切换', value: ToolbarStates.SLIDE_ANIMATION },
-      { label: '动画', value: ToolbarStates.EL_ANIMATION },
-    ]
-    const multiSelectTabs = [
-      { label: '位置', value: ToolbarStates.MULTI_POSITION },
-      { label: '样式', value: ToolbarStates.EL_STYLE },
-    ]
+  }
+  return [
+    { label: '样式', value: ToolbarStates.EL_STYLE },
+    { label: '位置', value: ToolbarStates.EL_POSITION },
+    { label: '动画', value: ToolbarStates.EL_ANIMATION },
+  ]
+})
+const slideTabs = [
+  { label: '设计', value: ToolbarStates.SLIDE_DESIGN },
+  { label: '切换', value: ToolbarStates.SLIDE_ANIMATION },
+  { label: '动画', value: ToolbarStates.EL_ANIMATION },
+]
+const multiSelectTabs = [
+  { label: '样式', value: ToolbarStates.EL_STYLE },
+  { label: '位置', value: ToolbarStates.MULTI_POSITION },
+]
 
-    const setToolbarState = (value: ToolbarState) => {
-      store.commit(MutationTypes.SET_TOOLBAR_STATE, value)
-    }
+const setToolbarState = (value: ToolbarStates) => {
+  mainStore.setToolbarState(value)
+}
 
-    const activeElementIdList = computed(() => store.state.activeElementIdList)
-    const currentTabs = computed(() => {
-      if (!activeElementIdList.value.length) return slideTabs
-      else if (activeElementIdList.value.length > 1) return multiSelectTabs
-      return elementTabs
-    })
+const currentTabs = computed(() => {
+  if (!activeElementIdList.value.length) return slideTabs
+  else if (activeElementIdList.value.length > 1) return multiSelectTabs
+  return elementTabs.value
+})
 
-    watch(currentTabs, () => {
-      const currentTabsValue = currentTabs.value.map(tab => tab.value)
-      if (!currentTabsValue.includes(toolbarState.value)) {
-        store.commit(MutationTypes.SET_TOOLBAR_STATE, currentTabsValue[0])
-      }
-    })
+watch(currentTabs, () => {
+  const currentTabsValue: ToolbarStates[] = currentTabs.value.map(tab => tab.value)
+  if (!currentTabsValue.includes(toolbarState.value)) {
+    mainStore.setToolbarState(currentTabsValue[0])
+  }
+})
 
-    const currentPanelComponent = computed(() => {
-      const panelMap = {
-        [ToolbarStates.EL_STYLE]: ElementStylePanel,
-        [ToolbarStates.EL_POSITION]: ElementPositionPanel,
-        [ToolbarStates.EL_ANIMATION]: ElementAnimationPanel,
-        [ToolbarStates.SLIDE_STYLE]: SlideStylePanel,
-        [ToolbarStates.SLIDE_ANIMATION]: SlideAnimationPanel,
-        [ToolbarStates.MULTI_POSITION]: MultiPositionPanel,
-      }
-      return panelMap[toolbarState.value] || null
-    })
-
-    return {
-      toolbarState,
-      currentTabs,
-      setToolbarState,
-      currentPanelComponent,
-    }
-  },
+const currentPanelComponent = computed(() => {
+  const panelMap = {
+    [ToolbarStates.EL_STYLE]: ElementStylePanel,
+    [ToolbarStates.EL_POSITION]: ElementPositionPanel,
+    [ToolbarStates.EL_ANIMATION]: ElementAnimationPanel,
+    [ToolbarStates.SLIDE_DESIGN]: SlideDesignPanel,
+    [ToolbarStates.SLIDE_ANIMATION]: SlideAnimationPanel,
+    [ToolbarStates.MULTI_POSITION]: MultiPositionPanel,
+    [ToolbarStates.SYMBOL]: SymbolPanel,
+  }
+  return panelMap[toolbarState.value] || null
 })
 </script>
 

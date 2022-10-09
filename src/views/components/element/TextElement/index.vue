@@ -1,12 +1,12 @@
 <template>
   <div 
     class="editable-element-text" 
-    ref="elementRef"
     :class="{ 'lock': elementInfo.lock }"
     :style="{
       top: elementInfo.top + 'px',
       left: elementInfo.left + 'px',
       width: elementInfo.width + 'px',
+      height: elementInfo.height + 'px',
     }"
   >
     <div
@@ -15,7 +15,10 @@
     >
       <div 
         class="element-content"
+        ref="elementRef"
         :style="{
+          width: elementInfo.vertical ? 'auto' : elementInfo.width + 'px',
+          height: elementInfo.vertical ? elementInfo.height + 'px' : 'auto',
           backgroundColor: elementInfo.fill,
           opacity: elementInfo.opacity,
           textShadow: shadowStyle,
@@ -23,302 +26,163 @@
           letterSpacing: (elementInfo.wordSpace || 0) + 'px',
           color: elementInfo.defaultColor,
           fontFamily: elementInfo.defaultFontName,
+          writingMode: elementInfo.vertical ? 'vertical-rl' : 'horizontal-tb',
         }"
         v-contextmenu="contextmenus"
         @mousedown="$event => handleSelectElement($event)"
+        @touchstart="$event => handleSelectElement($event)"
       >
         <ElementOutline
           :width="elementInfo.width"
           :height="elementInfo.height"
           :outline="elementInfo.outline"
         />
-        <div 
+        <ProsemirrorEditor
           class="text"
-          ref="editorViewRef"
+          :elementId="elementInfo.id"
+          :defaultColor="elementInfo.defaultColor"
+          :defaultFontName="elementInfo.defaultFontName"
+          :editable="!elementInfo.lock"
+          :value="elementInfo.content"
+          :style="{
+            '--textIndent': `${elementInfo.textIndent || 0}px`,
+            '--paragraphSpace': `${elementInfo.paragraphSpace === undefined ? 5 : elementInfo.paragraphSpace}px`,
+          }"
+          @update="value => updateContent(value)"
           @mousedown="$event => handleSelectElement($event, false)"
-        ></div>
+          @touchstart="$event => handleSelectElement($event)"
+        />
+
+        <!-- 当字号过大且行高较小时，会出现文字高度溢出的情况，导致拖拽区域无法被选中，因此添加了以下节点避免该情况 -->
+        <div class="drag-handler top"></div>
+        <div class="drag-handler bottom"></div>
       </div>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, onMounted, onUnmounted, PropType, ref, watch } from 'vue'
-import { debounce } from 'lodash'
-import { MutationTypes, useStore } from '@/store'
-import { EditorView } from 'prosemirror-view'
-import { toggleMark, wrapIn, selectAll } from 'prosemirror-commands'
+<script lang="ts" setup>
+import { computed, onMounted, onUnmounted, PropType, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMainStore, useSlidesStore } from '@/store'
 import { PPTTextElement } from '@/types/slides'
 import { ContextmenuItem } from '@/components/Contextmenu/types'
-import { initProsemirrorEditor } from '@/utils/prosemirror/'
-import { getTextAttrs } from '@/utils/prosemirror/utils'
-import emitter, { EmitterEvents, EmitterHandler } from '@/utils/emitter'
 import useElementShadow from '@/views/components/element/hooks/useElementShadow'
-import { alignmentCommand } from '@/utils/prosemirror/commands/setTextAlign'
-import { toggleList } from '@/utils/prosemirror/commands/toggleList'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 import ElementOutline from '@/views/components/element/ElementOutline.vue'
+import ProsemirrorEditor from '@/views/components/element/ProsemirrorEditor.vue'
 
-interface CommandPayload {
-  command: string;
-  value?: string;
+const props = defineProps({
+  elementInfo: {
+    type: Object as PropType<PPTTextElement>,
+    required: true,
+  },
+  selectElement: {
+    type: Function as PropType<(e: MouseEvent | TouchEvent, element: PPTTextElement, canMove?: boolean) => void>,
+    required: true,
+  },
+  contextmenus: {
+    type: Function as PropType<() => ContextmenuItem[] | null>,
+  },
+})
+
+const mainStore = useMainStore()
+const slidesStore = useSlidesStore()
+const { handleElementId, isScaling } = storeToRefs(mainStore)
+
+const { addHistorySnapshot } = useHistorySnapshot()
+
+const elementRef = ref<HTMLElement>()
+
+const shadow = computed(() => props.elementInfo.shadow)
+const { shadowStyle } = useElementShadow(shadow)
+
+const handleSelectElement = (e: MouseEvent | TouchEvent, canMove = true) => {
+  if (props.elementInfo.lock) return
+  e.stopPropagation()
+
+  props.selectElement(e, props.elementInfo, canMove)
 }
 
-export default defineComponent({
-  name: 'editable-element-text',
-  components: {
-    ElementOutline,
-  },
-  props: {
-    elementInfo: {
-      type: Object as PropType<PPTTextElement>,
-      required: true,
-    },
-    selectElement: {
-      type: Function as PropType<(e: MouseEvent, element: PPTTextElement, canMove?: boolean) => void>,
-      required: true,
-    },
-    contextmenus: {
-      type: Function as PropType<() => ContextmenuItem[]>,
-    },
-  },
-  setup(props) {
-    const store = useStore()
-    const { addHistorySnapshot } = useHistorySnapshot()
+// 监听文本元素的尺寸变化，当高度变化时，更新高度到vuex
+// 如果高度变化时正处在缩放操作中，则等待缩放操作结束后再更新
+const realHeightCache = ref(-1)
+const realWidthCache = ref(-1)
 
-    const elementRef = ref<HTMLElement>()
+watch(isScaling, () => {
+  if (handleElementId.value !== props.elementInfo.id) return
 
-    const editorViewRef = ref<HTMLElement>()
-    let editorView: EditorView
-
-    const shadow = computed(() => props.elementInfo.shadow)
-    const { shadowStyle } = useElementShadow(shadow)
-
-    const handleElementId = computed(() => store.state.handleElementId)
-
-    const handleSelectElement = (e: MouseEvent, canMove = true) => {
-      if (props.elementInfo.lock) return
-      e.stopPropagation()
-
-      props.selectElement(e, props.elementInfo, canMove)
-    }
-
-    // 监听文本元素的尺寸变化，当高度变化时，更新高度到vuex
-    // 如果高度变化时正处在缩放操作中，则等待缩放操作结束后再更新
-    const realHeightCache = ref(-1)
-
-    const isScaling = computed(() => store.state.isScaling)
-
-    watch(isScaling, () => {
-      if (handleElementId.value !== props.elementInfo.id) return
-
-      if (!isScaling.value && realHeightCache.value !== -1) {
-        store.commit(MutationTypes.UPDATE_ELEMENT, {
-          id: props.elementInfo.id,
-          props: { height: realHeightCache.value },
-        })
-        realHeightCache.value = -1
-      }
-    })
-
-    const updateTextElementHeight = (entries: ResizeObserverEntry[]) => {
-      const contentRect = entries[0].contentRect
-      if (!elementRef.value) return
-
-      const realHeight = contentRect.height
-
-      if (props.elementInfo.height !== realHeight) {
-        if (!isScaling.value) {
-          store.commit(MutationTypes.UPDATE_ELEMENT, {
-            id: props.elementInfo.id,
-            props: { height: realHeight },
-          })
-        }
-        else realHeightCache.value = realHeight
-      }
-    }
-    const resizeObserver = new ResizeObserver(updateTextElementHeight)
-
-    onMounted(() => {
-      if (elementRef.value) resizeObserver.observe(elementRef.value)
-    })
-    onUnmounted(() => {
-      if (elementRef.value) resizeObserver.unobserve(elementRef.value)
-    })
-
-    // 富文本的各种交互事件监听：
-    // 聚焦时取消全局快捷键事件
-    // 输入文字时同步数据到vuex
-    // 点击鼠标和键盘时同步富文本状态到工具栏
-    const handleInput = debounce(function() {
-      store.commit(MutationTypes.UPDATE_ELEMENT, {
-        id: props.elementInfo.id, 
-        props: { content: editorView.dom.innerHTML },
+  if (!isScaling.value) {
+    if (!props.elementInfo.vertical && realHeightCache.value !== -1) {
+      slidesStore.updateElement({
+        id: props.elementInfo.id,
+        props: { height: realHeightCache.value },
       })
-      addHistorySnapshot()
-    }, 300, { trailing: true })
-
-    const handleFocus = () => {
-      if (props.elementInfo.content === '请输入内容') {
-        setTimeout(() => {
-          selectAll(editorView.state, editorView.dispatch)
-        }, 0)
-      }
-      store.commit(MutationTypes.SET_DISABLE_HOTKEYS_STATE, true)
+      realHeightCache.value = -1
     }
-
-    const handleBlur = () => {
-      store.commit(MutationTypes.SET_DISABLE_HOTKEYS_STATE, false)
-    }
-
-    const handleClick = debounce(function() {
-      const attrs = getTextAttrs(editorView, {
-        color: props.elementInfo.defaultColor,
-        fontname: props.elementInfo.defaultFontName,
+    if (props.elementInfo.vertical && realWidthCache.value !== -1) {
+      slidesStore.updateElement({
+        id: props.elementInfo.id,
+        props: { width: realWidthCache.value },
       })
-      store.commit(MutationTypes.SET_RICHTEXT_ATTRS, attrs)
-    }, 30, { trailing: true })
-
-    const handleKeydown = () => {
-      handleInput()
-      handleClick()
+      realWidthCache.value = -1
     }
+  }
+})
 
-    // 将富文本内容同步到DOM
-    const textContent = computed(() => props.elementInfo.content)
-    watch(textContent, () => {
-      if (!editorView) return
-      if (editorView.hasFocus()) return
-      editorView.dom.innerHTML = textContent.value
-    })
+const updateTextElementHeight = (entries: ResizeObserverEntry[]) => {
+  const contentRect = entries[0].contentRect
+  if (!elementRef.value) return
 
-    // 打开/关闭编辑器的编辑模式
-    const editable = computed(() => !props.elementInfo.lock)
-    watch(editable, () => {
-      editorView.setProps({ editable: () => editable.value })
-    })
+  const realHeight = contentRect.height + 20
+  const realWidth = contentRect.width + 20
 
-    // Prosemirror编辑器的初始化和卸载
-    onMounted(() => {
-      editorView = initProsemirrorEditor((editorViewRef.value as Element), textContent.value, {
-        handleDOMEvents: {
-          focus: handleFocus,
-          blur: handleBlur,
-          keydown: handleKeydown,
-          click: handleClick,
-        },
-        editable: () => editable.value,
+  if (!props.elementInfo.vertical && props.elementInfo.height !== realHeight) {
+    if (!isScaling.value) {
+      slidesStore.updateElement({
+        id: props.elementInfo.id,
+        props: { height: realHeight },
       })
-    })
-    onUnmounted(() => {
-      editorView && editorView.destroy()
-    })
-    
-    // 执行富文本命令（可以是一个或多个）
-    // 部分命令在执行前先判断当前选区是否为空，如果选区为空先进行全选操作
-    const execCommand: EmitterHandler = (payload: CommandPayload | CommandPayload[]) => {
-      if (handleElementId.value !== props.elementInfo.id) return
-
-      const commands = ('command' in payload) ? [payload] : payload
-
-      for (const item of commands) {
-        if (item.command === 'fontname' && item.value) {
-          const mark = editorView.state.schema.marks.fontname.create({ fontname: item.value })
-          const { empty } = editorView.state.selection
-          if (empty) selectAll(editorView.state, editorView.dispatch)
-          const { $from, $to } = editorView.state.selection
-          editorView.dispatch(editorView.state.tr.addMark($from.pos, $to.pos, mark))
-        }
-        else if (item.command === 'fontsize' && item.value) {
-          const mark = editorView.state.schema.marks.fontsize.create({ fontsize: item.value })
-          const { empty } = editorView.state.selection
-          if (empty) selectAll(editorView.state, editorView.dispatch)
-          const { $from, $to } = editorView.state.selection
-          editorView.dispatch(editorView.state.tr.addMark($from.pos, $to.pos, mark))
-        }
-        else if (item.command === 'color' && item.value) {
-          const mark = editorView.state.schema.marks.forecolor.create({ color: item.value })
-          const { empty } = editorView.state.selection
-          if (empty) selectAll(editorView.state, editorView.dispatch)
-          const { $from, $to } = editorView.state.selection
-          editorView.dispatch(editorView.state.tr.addMark($from.pos, $to.pos, mark))
-        }
-        else if (item.command === 'backcolor' && item.value) {
-          const mark = editorView.state.schema.marks.backcolor.create({ backcolor: item.value })
-          const { empty } = editorView.state.selection
-          if (empty) selectAll(editorView.state, editorView.dispatch)
-          const { $from, $to } = editorView.state.selection
-          editorView.dispatch(editorView.state.tr.addMark($from.pos, $to.pos, mark))
-        }
-        else if (item.command === 'bold') {
-          const { empty } = editorView.state.selection
-          if (empty) selectAll(editorView.state, editorView.dispatch)
-          toggleMark(editorView.state.schema.marks.strong)(editorView.state, editorView.dispatch)
-        }
-        else if (item.command === 'em') {
-          const { empty } = editorView.state.selection
-          if (empty) selectAll(editorView.state, editorView.dispatch)
-          toggleMark(editorView.state.schema.marks.em)(editorView.state, editorView.dispatch)
-        }
-        else if (item.command === 'underline') {
-          const { empty } = editorView.state.selection
-          if (empty) selectAll(editorView.state, editorView.dispatch)
-          toggleMark(editorView.state.schema.marks.underline)(editorView.state, editorView.dispatch)
-        }
-        else if (item.command === 'strikethrough') {
-          const { empty } = editorView.state.selection
-          if (empty) selectAll(editorView.state, editorView.dispatch)
-          toggleMark(editorView.state.schema.marks.strikethrough)(editorView.state, editorView.dispatch)
-        }
-        else if (item.command === 'subscript') {
-          toggleMark(editorView.state.schema.marks.subscript)(editorView.state, editorView.dispatch)
-        }
-        else if (item.command === 'superscript') {
-          toggleMark(editorView.state.schema.marks.superscript)(editorView.state, editorView.dispatch)
-        }
-        else if (item.command === 'blockquote') {
-          wrapIn(editorView.state.schema.nodes.blockquote)(editorView.state, editorView.dispatch)
-        }
-        else if (item.command === 'code') {
-          toggleMark(editorView.state.schema.marks.code)(editorView.state, editorView.dispatch)
-        }
-        else if (item.command === 'align' && item.value) {
-          alignmentCommand(editorView, item.value)
-        }
-        else if (item.command === 'bulletList') {
-          const { bullet_list: bulletList, list_item: listItem } = editorView.state.schema.nodes
-          toggleList(bulletList, listItem)(editorView.state, editorView.dispatch)
-        }
-        else if (item.command === 'orderedList') {
-          const { ordered_list: orderedList, list_item: listItem } = editorView.state.schema.nodes
-          toggleList(orderedList, listItem)(editorView.state, editorView.dispatch)
-        }
-        else if (item.command === 'clear') {
-          const { empty } = editorView.state.selection
-          if (empty) selectAll(editorView.state, editorView.dispatch)
-          const { $from, $to } = editorView.state.selection
-          editorView.dispatch(editorView.state.tr.removeMark($from.pos, $to.pos))
-        }
-      }
-
-      editorView.focus()
-      handleInput()
-      handleClick()
     }
-
-    emitter.on(EmitterEvents.EXEC_TEXT_COMMAND, execCommand)
-    onUnmounted(() => {
-      emitter.off(EmitterEvents.EXEC_TEXT_COMMAND, execCommand)
-    })
-
-    return {
-      elementRef,
-      editorViewRef,
-      handleSelectElement,
-      shadowStyle,
+    else realHeightCache.value = realHeight
+  }
+  if (props.elementInfo.vertical && props.elementInfo.width !== realWidth) {
+    if (!isScaling.value) {
+      slidesStore.updateElement({
+        id: props.elementInfo.id,
+        props: { width: realWidth },
+      })
     }
-  },
+    else realWidthCache.value = realWidth
+  }
+}
+const resizeObserver = new ResizeObserver(updateTextElementHeight)
+
+onMounted(() => {
+  if (elementRef.value) resizeObserver.observe(elementRef.value)
+})
+onUnmounted(() => {
+  if (elementRef.value) resizeObserver.unobserve(elementRef.value)
+})
+
+const updateContent = (content: string) => {
+  slidesStore.updateElement({
+    id: props.elementInfo.id,
+    props: { content },
+  })
+  
+  addHistorySnapshot()
+}
+
+const checkEmptyText = () => {
+  const pureText = props.elementInfo.content.replaceAll(/<[^>]+>/g, '')
+  if (!pureText) slidesStore.deleteElement(props.elementInfo.id)
+}
+
+const isHandleElement = computed(() => handleElementId.value === props.elementInfo.id)
+watch(isHandleElement, () => {
+  if (!isHandleElement.value) checkEmptyText()
 })
 </script>
 
@@ -343,7 +207,23 @@ export default defineComponent({
 
   .text {
     position: relative;
+  }
+
+  ::v-deep(a) {
     cursor: text;
+  }
+}
+.drag-handler {
+  height: 10px;
+  position: absolute;
+  left: 0;
+  right: 0;
+
+  &.top {
+    top: 0;
+  }
+  &.bottom {
+    bottom: 0;
   }
 }
 </style>

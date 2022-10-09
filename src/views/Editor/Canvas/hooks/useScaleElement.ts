@@ -1,17 +1,19 @@
-import { computed, Ref } from 'vue'
-import { MutationTypes, useStore } from '@/store'
+import { Ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMainStore, useSlidesStore, useKeyboardStore } from '@/store'
 import { PPTElement, PPTImageElement, PPTLineElement, PPTShapeElement } from '@/types/slides'
 import { OperateResizeHandlers, AlignmentLineProps, MultiSelectRange } from '@/types/edit'
 import { VIEWPORT_SIZE } from '@/configs/canvas'
 import { MIN_SIZE } from '@/configs/element'
+import { SHAPE_PATH_FORMULAS } from '@/configs/shapes'
 import { AlignLine, uniqAlignLines } from '@/utils/element'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 interface RotateElementData {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
+  left: number
+  top: number
+  width: number
+  height: number
 }
 
 /**
@@ -94,25 +96,30 @@ const getOppositePoint = (direction: string, points: ReturnType<typeof getRotate
 export default (
   elementList: Ref<PPTElement[]>,
   alignmentLines: Ref<AlignmentLineProps[]>,
+  canvasScale: Ref<number>,
 ) => {
-  const store = useStore()
-  const activeElementIdList = computed(() => store.state.activeElementIdList)
-  const activeGroupElementId = computed(() => store.state.activeGroupElementId)
-  const canvasScale = computed(() => store.state.canvasScale)
-  const viewportRatio = computed(() => store.state.viewportRatio)
-  const ctrlOrShiftKeyActive = computed<boolean>(() => store.getters.ctrlOrShiftKeyActive)
+  const mainStore = useMainStore()
+  const slidesStore = useSlidesStore()
+  const { activeElementIdList, activeGroupElementId } = storeToRefs(mainStore)
+  const { viewportRatio } = storeToRefs(slidesStore)
+  const { ctrlOrShiftKeyActive } = storeToRefs(useKeyboardStore())
 
   const { addHistorySnapshot } = useHistorySnapshot()
 
   // 缩放元素
-  const scaleElement = (e: MouseEvent, element: Exclude<PPTElement, PPTLineElement>, command: OperateResizeHandlers) => {
+  const scaleElement = (e: MouseEvent | TouchEvent, element: Exclude<PPTElement, PPTLineElement>, command: OperateResizeHandlers) => {
+    const isTouchEvent = !(e instanceof MouseEvent)
+    if (isTouchEvent && (!e.changedTouches || !e.changedTouches[0])) return
+
     let isMouseDown = true
-    store.commit(MutationTypes.SET_SCALING_STATE, true)
+    mainStore.setScalingState(true)
 
     const elOriginLeft = element.left
     const elOriginTop = element.top
     const elOriginWidth = element.width
     const elOriginHeight = element.height
+
+    const originTableCellMinHeight = element.type === 'table' ? element.cellMinHeight : 0
     
     const elRotate = ('rotate' in element && element.rotate) ? element.rotate : 0
     const rotateRadian = Math.PI * elRotate / 180
@@ -120,8 +127,8 @@ export default (
     const fixedRatio = ctrlOrShiftKeyActive.value || ('fixedRatio' in element && element.fixedRatio)
     const aspectRatio = elOriginWidth / elOriginHeight
 
-    const startPageX = e.pageX
-    const startPageY = e.pageY
+    const startPageX = isTouchEvent ? e.changedTouches[0].pageX : e.pageX
+    const startPageY = isTouchEvent ? e.changedTouches[0].pageY : e.pageY
 
     // 元素最小缩放限制
     const minSize = MIN_SIZE[element.type] || 20
@@ -144,7 +151,7 @@ export default (
       baseTop = oppositePoint.top
     }
 
-    // 未旋转的元素具有缩放时的对齐吸附功能，在这处收集对齐对齐吸附线
+    // 未旋转的元素具有缩放时的对齐吸附功能，在此处收集对齐对齐吸附线
     // 包括页面内除目标元素外的其他元素在画布中的各个可吸附对齐位置：上下左右四边
     // 其中线条和被旋转过的元素不参与吸附对齐
     else {
@@ -230,12 +237,11 @@ export default (
       return correctionVal
     }
 
-    // 开始缩放
-    document.onmousemove = e => {
+    const handleMousemove = (e: MouseEvent | TouchEvent) => {
       if (!isMouseDown) return
 
-      const currentPageX = e.pageX
-      const currentPageY = e.pageY
+      const currentPageX = e instanceof MouseEvent ? e.pageX : e.changedTouches[0].pageX
+      const currentPageY = e instanceof MouseEvent ? e.pageY : e.changedTouches[0].pageY
 
       const x = currentPageX - startPageX
       const y = currentPageY - startPageY
@@ -393,21 +399,63 @@ export default (
         }
       }
       
-      elementList.value = elementList.value.map(el => element.id === el.id ? { ...el, left, top, width, height } : el)
+      elementList.value = elementList.value.map(el => {
+        if (element.id !== el.id) return el
+        if (el.type === 'shape' && 'pathFormula' in el && el.pathFormula) {
+          const pathFormula = SHAPE_PATH_FORMULAS[el.pathFormula]
+
+          let path = ''
+          if ('editable' in pathFormula) path = pathFormula.formula(width, height, el.keypoint!)
+          else path = pathFormula.formula(width, height)
+
+          return {
+            ...el, left, top, width, height,
+            viewBox: [width, height],
+            path,
+          }
+        }
+        if (el.type === 'table') {
+          let cellMinHeight = originTableCellMinHeight + (height - elOriginHeight) / el.data.length
+          cellMinHeight = cellMinHeight < 36 ? 36 : cellMinHeight
+
+          if (cellMinHeight === originTableCellMinHeight) return { ...el, left, width }
+          return {
+            ...el, left, top, width, height,
+            cellMinHeight: cellMinHeight < 36 ? 36 : cellMinHeight,
+          }
+        }
+        return { ...el, left, top, width, height }
+      })
     }
 
-    document.onmouseup = e => {
+    const handleMouseup = (e: MouseEvent | TouchEvent) => {
       isMouseDown = false
+      
+      document.ontouchmove = null
+      document.ontouchend = null
       document.onmousemove = null
       document.onmouseup = null
+
       alignmentLines.value = []
+
+      const currentPageX = e instanceof MouseEvent ? e.pageX : e.changedTouches[0].pageX
+      const currentPageY = e instanceof MouseEvent ? e.pageY : e.changedTouches[0].pageY
       
-      if (startPageX === e.pageX && startPageY === e.pageY) return
+      if (startPageX === currentPageX && startPageY === currentPageY) return
       
-      store.commit(MutationTypes.UPDATE_SLIDE, { elements: elementList.value })
-      store.commit(MutationTypes.SET_SCALING_STATE, false)
+      slidesStore.updateSlide({ elements: elementList.value })
+      mainStore.setScalingState(false)
       
       addHistorySnapshot()
+    }
+
+    if (isTouchEvent) {
+      document.ontouchmove = handleMousemove
+      document.ontouchend = handleMouseup
+    }
+    else {
+      document.onmousemove = handleMousemove
+      document.onmouseup = handleMouseup
     }
   }
 
@@ -509,7 +557,7 @@ export default (
 
       if (startPageX === e.pageX && startPageY === e.pageY) return
 
-      store.commit(MutationTypes.UPDATE_SLIDE, { elements: elementList.value })
+      slidesStore.updateSlide({ elements: elementList.value })
       addHistorySnapshot()
     }
   }

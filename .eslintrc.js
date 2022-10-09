@@ -6,6 +6,7 @@ module.exports = {
   root: true,
   env: {
     node: true,
+    'vue/setup-compiler-macros': true,
   },
   extends: [
     'plugin:vue/vue3-essential',
@@ -60,6 +61,7 @@ module.exports = {
     'no-useless-return': 'error',
     'array-bracket-spacing': 'error',
     'no-useless-escape': 'off',
+    'no-unused-vars': 'off',
     'no-eval': 'error',
     'no-var': 'error',
     'no-with': 'error',
@@ -67,6 +69,16 @@ module.exports = {
     'no-console': isProduction ? 'error' : 'warn',
     'no-debugger': isProduction ? 'error' : 'warn',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
+    '@typescript-eslint/ban-types': ['error', {
+      'extendDefaults': true,
+      'types': {
+        '{}': false,
+      },
+    }],
+    '@typescript-eslint/no-unused-vars': 'off',
+    '@typescript-eslint/no-non-null-assertion': 'off',
+    'vue/multi-word-component-names': 'off',
+    'vue/no-reserved-component-names': 'off',
   },
   overrides: [
     {

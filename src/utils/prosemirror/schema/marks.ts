@@ -59,6 +59,8 @@ const forecolor: MarkSpec = {
   attrs: {
     color: {},
   },
+  inline: true,
+  group: 'inline',
   parseDOM: [
     {
       style: 'color',
@@ -81,7 +83,7 @@ const backcolor: MarkSpec = {
   group: 'inline',
   parseDOM: [
     {
-      tag: 'span[style*=background-color]',
+      style: 'background-color',
       getAttrs: backcolor => backcolor ? { backcolor } : {}
     },
   ],
@@ -135,14 +137,35 @@ const fontname: MarkSpec = {
   },
 }
 
+const link: MarkSpec = {
+  attrs: {
+    href: {},
+    title: { default: null },
+    target: { default: '_blank' },
+  },
+  inclusive: false,
+  parseDOM: [
+    {
+      tag: 'a[href]',
+      getAttrs: dom => {
+        const href = (dom as HTMLElement).getAttribute('href')
+        const title = (dom as HTMLElement).getAttribute('title')
+        return { href, title }
+      }
+    },
+  ],
+  toDOM: node => ['a', node.attrs, 0],
+}
+
 export default {
   ...marks,
+  fontsize,
+  fontname,
+  forecolor,
+  backcolor,
   subscript,
   superscript,
   strikethrough,
   underline,
-  forecolor,
-  backcolor,
-  fontsize,
-  fontname,
+  link,
 }

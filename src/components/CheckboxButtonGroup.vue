@@ -4,10 +4,8 @@
   </div>
 </template>
 
-<script lang="ts">
-export default {
-  name: 'checkbox-button-group',
-}
+<script lang="ts" setup>
+
 </script>
 
 <style lang="scss" scoped>

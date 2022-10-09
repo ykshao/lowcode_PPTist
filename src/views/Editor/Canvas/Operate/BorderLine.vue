@@ -2,23 +2,20 @@
   <div :class="['border-line', type, { 'wide': isWide }]"></div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import { PropType } from 'vue'
-import { OperateBorderLine } from '@/types/edit'
+import { OperateBorderLines } from '@/types/edit'
 
-export default {
-  name: 'border-line',
-  props: {
-    type: {
-      type: String as PropType<OperateBorderLine>,
-      required: true,
-    },
-    isWide: {
-      type: Boolean,
-      default: false,
-    },
+defineProps({
+  type: {
+    type: String as PropType<OperateBorderLines>,
+    required: true,
   },
-}
+  isWide: {
+    type: Boolean,
+    default: false,
+  },
+})
 </script>
 
 <style lang="scss" scoped>

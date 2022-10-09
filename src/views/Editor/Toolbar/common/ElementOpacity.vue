@@ -3,50 +3,41 @@
     <div class="row">
       <div style="flex: 2;">不透明度：</div>
       <Slider
+        class="slider"
         :min="0"
         :max="1"
         :step="0.1"
         :value="opacity"
-        style="flex: 3;"
-        @change="value => updateOpacity(value)" 
+        @change="value => updateOpacity(value as number)" 
       />
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, ref, watch } from 'vue'
-import { MutationTypes, useStore } from '@/store'
-import { PPTElement } from '@/types/slides'
+<script lang="ts" setup>
+import { ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMainStore, useSlidesStore } from '@/store'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
-export default defineComponent({
-  name: 'element-opacity',
-  setup() {
-    const store = useStore()
-    const handleElement = computed<PPTElement>(() => store.getters.handleElement)
+const slidesStore = useSlidesStore()
+const { handleElement } = storeToRefs(useMainStore())
 
-    const opacity = ref<number>()
+const opacity = ref<number>(1)
 
-    watch(handleElement, () => {
-      if (!handleElement.value) return
-      opacity.value = 'opacity' in handleElement.value && handleElement.value.opacity !== undefined ? handleElement.value.opacity : 1
-    }, { deep: true, immediate: true })
+watch(handleElement, () => {
+  if (!handleElement.value) return
+  opacity.value = 'opacity' in handleElement.value && handleElement.value.opacity !== undefined ? handleElement.value.opacity : 1
+}, { deep: true, immediate: true })
 
-    const { addHistorySnapshot } = useHistorySnapshot()
+const { addHistorySnapshot } = useHistorySnapshot()
 
-    const updateOpacity = (value: number) => {
-      const props = { opacity: value }
-      store.commit(MutationTypes.UPDATE_ELEMENT, { id: handleElement.value.id, props })
-      addHistorySnapshot()
-    }
-
-    return {
-      opacity,
-      updateOpacity,
-    }
-  },
-})
+const updateOpacity = (value: number) => {
+  if (!handleElement.value) return
+  const props = { opacity: value }
+  slidesStore.updateElement({ id: handleElement.value.id, props })
+  addHistorySnapshot()
+}
 </script>
 
 <style lang="scss" scoped>
@@ -55,5 +46,8 @@ export default defineComponent({
   display: flex;
   align-items: center;
   margin-bottom: 10px;
+}
+.slider {
+  flex: 3;
 }
 </style>

@@ -17,10 +17,7 @@
         <col span="1" v-for="(width, index) in colSizeList" :key="index" :width="width">
       </colgroup>
       <tbody>
-        <tr
-          v-for="(rowCells, rowIndex) in data" 
-          :key="rowIndex"
-        >
+        <tr v-for="(rowCells, rowIndex) in data" :key="rowIndex" :style="{ height: cellMinHeight + 'px' }">
           <td 
             class="cell"
             :style="{
@@ -35,7 +32,7 @@
             :colspan="cell.colspan"
             v-show="!hideCells.includes(`${rowIndex}_${colIndex}`)"
           >
-            <div class="cell-text" v-html="formatText(cell.text)" />
+            <div class="cell-text" :style="{ minHeight: (cellMinHeight - 4) + 'px' }" v-html="formatText(cell.text)" />
           </td>
         </tr>
       </tbody>
@@ -43,67 +40,58 @@
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, PropType, ref, watch } from 'vue'
+<script lang="ts" setup>
+import { computed, PropType, ref, watch } from 'vue'
 import { PPTElementOutline, TableCell, TableTheme } from '@/types/slides'
 import { getTextStyle, formatText } from './utils'
 import useHideCells from './useHideCells'
 import useSubThemeColor from './useSubThemeColor'
 
-export default defineComponent({
-  name: 'static-table',
-  props: {
-    data: {
-      type: Array as PropType<TableCell[][]>,
-      required: true,
-    },
-    width: {
-      type: Number,
-      required: true,
-    },
-    colWidths: {
-      type: Array as PropType<number[]>,
-      required: true,
-    },
-    outline: {
-      type: Object as PropType<PPTElementOutline>,
-      required: true,
-    },
-    theme: {
-      type: Object as PropType<TableTheme>,
-    },
-    editable: {
-      type: Boolean,
-      default: true,
-    },
+const props = defineProps({
+  data: {
+    type: Array as PropType<TableCell[][]>,
+    required: true,
   },
-  setup(props) {
-    const colSizeList = ref<number[]>([])
-    const totalWidth = computed(() => colSizeList.value.reduce((a, b) => a + b))
-
-    watch([
-      () => props.colWidths,
-      () => props.width,
-    ], () => {
-      colSizeList.value = props.colWidths.map(item => item * props.width)
-    }, { immediate: true })
-
-    const cells = computed(() => props.data)
-    const { hideCells } = useHideCells(cells)
-
-    const theme = computed(() => props.theme)
-    const { subThemeColor } = useSubThemeColor(theme)
-
-    return {
-      colSizeList,
-      totalWidth,
-      hideCells,
-      getTextStyle,
-      formatText,
-      subThemeColor,
-    }
+  width: {
+    type: Number,
+    required: true,
+  },
+  cellMinHeight: {
+    type: Number,
+    required: true,
+  },
+  colWidths: {
+    type: Array as PropType<number[]>,
+    required: true,
+  },
+  outline: {
+    type: Object as PropType<PPTElementOutline>,
+    required: true,
+  },
+  theme: {
+    type: Object as PropType<TableTheme>,
+  },
+  editable: {
+    type: Boolean,
+    default: true,
   },
 })
+
+const colSizeList = ref<number[]>([])
+const totalWidth = computed(() => colSizeList.value.reduce((a, b) => a + b))
+
+watch([
+  () => props.colWidths,
+  () => props.width,
+], () => {
+  colSizeList.value = props.colWidths.map(item => item * props.width)
+}, { immediate: true })
+
+const cells = computed(() => props.data)
+const { hideCells } = useHideCells(cells)
+
+const theme = computed(() => props.theme)
+const { subThemeColor } = useSubThemeColor(theme)
 </script>
 
 <style lang="scss" scoped>
@@ -126,6 +114,8 @@ table {
   --subThemeColor2: $themeColor;
 
   &.theme {
+    background-color: #fff;
+
     tr:nth-child(2n) .cell {
       background-color: var(--subThemeColor1);
     }
@@ -155,10 +145,6 @@ table {
     }
   }
 
-  tr {
-    height: 36px;
-  }
-
   .cell {
     position: relative;
     white-space: normal;
@@ -167,13 +153,8 @@ table {
   }
 
   .cell-text {
-    min-height: 32px;
     padding: 5px;
-    border: 0;
-    outline: 0;
     line-height: 1.5;
-    font-size: 14px;
-    user-select: none;
   }
 }
 </style>

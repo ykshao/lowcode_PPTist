@@ -1,16 +1,14 @@
-import { computed } from 'vue'
-import { MutationTypes, useStore } from '@/store'
-import { PPTElement, Slide } from '@/types/slides'
-import { ElementAlignCommand, ElementAlignCommands } from '@/types/edit'
+import { storeToRefs } from 'pinia'
+import { useMainStore, useSlidesStore } from '@/store'
+import { PPTElement } from '@/types/slides'
+import { ElementAlignCommands } from '@/types/edit'
 import { getElementListRange, getRectRotatedOffset } from '@/utils/element'
 import useHistorySnapshot from './useHistorySnapshot'
 
 export default () => {
-  const store = useStore()
-
-  const activeElementIdList = computed(() => store.state.activeElementIdList)
-  const activeElementList = computed<PPTElement[]>(() => store.getters.activeElementList)
-  const currentSlide = computed<Slide>(() => store.getters.currentSlide)
+  const slidesStore = useSlidesStore()
+  const { activeElementIdList, activeElementList } = storeToRefs(useMainStore())
+  const { currentSlide } = storeToRefs(slidesStore)
 
   const { addHistorySnapshot } = useHistorySnapshot()
 
@@ -18,7 +16,7 @@ export default () => {
    * 对齐选中的元素
    * @param command 对齐方向
    */
-  const alignActiveElement = (command: ElementAlignCommand) => {
+  const alignActiveElement = (command: ElementAlignCommands) => {
     const { minX, maxX, minY, maxY } = getElementListRange(activeElementList.value)
     const elementList: PPTElement[] = JSON.parse(JSON.stringify(currentSlide.value.elements))
 
@@ -164,8 +162,8 @@ export default () => {
         }
       })
     }
-    
-    store.commit(MutationTypes.UPDATE_SLIDE, { elements: elementList })
+
+    slidesStore.updateSlide({ elements: elementList })
     addHistorySnapshot()
   }
 

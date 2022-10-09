@@ -5,17 +5,17 @@
       <div class="switch-wrapper" style="flex: 3;">
         <Switch 
           :checked="hasOutline" 
-          @change="checked => toggleOutline(checked)" 
+          @change="checked => toggleOutline(checked as boolean)" 
         />
       </div>
     </div>
-    <template v-if="hasOutline">
+    <template v-if="hasOutline && outline">
       <div class="row">
         <div style="flex: 2;">边框样式：</div>
         <Select 
           style="flex: 3;" 
           :value="outline.style" 
-          @change="value => updateOutline({ style: value })"
+          @change="value => updateOutline({ style: value as 'dashed' | 'solid' })"
         >
           <SelectOption value="solid">实线边框</SelectOption>
           <SelectOption value="dashed">虚线边框</SelectOption>
@@ -30,14 +30,14 @@
               @update:modelValue="value => updateOutline({ color: value })"
             />
           </template>
-          <ColorButton :color="outline.color" style="flex: 3;" />
+          <ColorButton :color="outline.color || '#000'" style="flex: 3;" />
         </Popover>
       </div>
       <div class="row">
         <div style="flex: 2;">边框粗细：</div>
         <InputNumber 
           :value="outline.width" 
-          @change="value => updateOutline({ width: value })" 
+          @change="value => updateOutline({ width: value as number })" 
           style="flex: 3;" 
         />
       </div>
@@ -45,65 +45,54 @@
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, ref, watch } from 'vue'
-import { MutationTypes, useStore } from '@/store'
-import { PPTElement, PPTElementOutline } from '@/types/slides'
+<script lang="ts" setup>
+import { ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMainStore, useSlidesStore } from '@/store'
+import { PPTElementOutline } from '@/types/slides'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 import ColorButton from './ColorButton.vue'
 
-export default defineComponent({
-  name: 'element-outline',
-  components: {
-    ColorButton,
-  },
-  props: {
-    fixed: {
-      type: Boolean,
-      default: false,
-    },
-  },
-  setup() {
-    const store = useStore()
-    const handleElement = computed<PPTElement>(() => store.getters.handleElement)
-
-    const outline = ref<PPTElementOutline>()
-    const hasOutline = ref(false)
-
-    watch(handleElement, () => {
-      if (!handleElement.value) return
-      outline.value = 'outline' in handleElement.value ? handleElement.value.outline : undefined
-      hasOutline.value = !!outline.value
-    }, { deep: true, immediate: true })
-
-    const { addHistorySnapshot } = useHistorySnapshot()
-
-    const updateOutline = (outlineProps: Partial<PPTElementOutline>) => {
-      const props = { outline: { ...outline.value, ...outlineProps } }
-      store.commit(MutationTypes.UPDATE_ELEMENT, { id: handleElement.value.id, props })
-      addHistorySnapshot()
-    }
-
-    const toggleOutline = (checked: boolean) => {
-      if (checked) {
-        const props = { outline: { width: 2, color: '#000', style: 'solid' } }
-        store.commit(MutationTypes.UPDATE_ELEMENT, { id: handleElement.value.id, props })
-      }
-      else {
-        store.commit(MutationTypes.REMOVE_ELEMENT_PROPS, { id: handleElement.value.id, propName: 'outline' })
-      }
-      addHistorySnapshot()
-    }
-
-    return {
-      outline,
-      hasOutline,
-      toggleOutline,
-      updateOutline,
-    }
+defineProps({
+  fixed: {
+    type: Boolean,
+    default: false,
   },
 })
+
+const slidesStore = useSlidesStore()
+const { handleElement } = storeToRefs(useMainStore())
+
+const outline = ref<PPTElementOutline>()
+const hasOutline = ref(false)
+
+watch(handleElement, () => {
+  if (!handleElement.value) return
+  outline.value = 'outline' in handleElement.value ? handleElement.value.outline : undefined
+  hasOutline.value = !!outline.value
+}, { deep: true, immediate: true })
+
+const { addHistorySnapshot } = useHistorySnapshot()
+
+const updateOutline = (outlineProps: Partial<PPTElementOutline>) => {
+  if (!handleElement.value) return
+  const props = { outline: { ...outline.value, ...outlineProps } }
+  slidesStore.updateElement({ id: handleElement.value.id, props })
+  addHistorySnapshot()
+}
+
+const toggleOutline = (checked: boolean) => {
+  if (!handleElement.value) return
+  if (checked) {
+    const _outline: PPTElementOutline = { width: 2, color: '#000', style: 'solid' }
+    slidesStore.updateElement({ id: handleElement.value.id, props: { outline: _outline } })
+  }
+  else {
+    slidesStore.removeElementProps({ id: handleElement.value.id, propName: 'outline' })
+  }
+  addHistorySnapshot()
+}
 </script>
 
 <style lang="scss" scoped>

@@ -7,12 +7,13 @@
       :type="line.type" 
       :style="line.style"
     />
-    <template v-if="!elementInfo.lock && (isActiveGroupElement || !isMultiSelect)">
+    <template v-if="handlerVisible">
       <ResizeHandler
         class="operate-resize-handler" 
         v-for="point in resizeHandlers"
         :key="point.direction"
         :type="point.direction"
+        :rotate="elementInfo.rotate"
         :style="point.style"
         @mousedown.stop="$event => scaleElement($event, elementInfo, point.direction)"
       />
@@ -26,64 +27,49 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType } from 'vue'
-import { useStore } from '@/store'
+export default {
+  inheritAttrs: false,
+}
+</script>
+
+<script lang="ts" setup>
+import { computed, PropType } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMainStore } from '@/store'
 import { PPTImageElement } from '@/types/slides'
-import { OperateResizeHandler } from '@/types/edit'
+import { OperateResizeHandlers } from '@/types/edit'
 import useCommonOperate from '../hooks/useCommonOperate'
 
 import RotateHandler from './RotateHandler.vue'
 import ResizeHandler from './ResizeHandler.vue'
 import BorderLine from './BorderLine.vue'
 
-export default defineComponent({
-  name: 'image-element-operate',
-  inheritAttrs: false,
-  components: {
-    RotateHandler,
-    ResizeHandler,
-    BorderLine,
+const props = defineProps({
+  elementInfo: {
+    type: Object as PropType<PPTImageElement>,
+    required: true,
   },
-  props: {
-    elementInfo: {
-      type: Object as PropType<PPTImageElement>,
-      required: true,
-    },
-    isActiveGroupElement: {
-      type: Boolean,
-      required: true,
-    },
-    isMultiSelect: {
-      type: Boolean,
-      required: true,
-    },
-    rotateElement: {
-      type: Function as PropType<(element: PPTImageElement) => void>,
-      required: true,
-    },
-    scaleElement: {
-      type: Function as PropType<(e: MouseEvent, element: PPTImageElement, command: OperateResizeHandler) => void>,
-      required: true,
-    },
+  handlerVisible: {
+    type: Boolean,
+    required: true,
   },
-  setup(props) {
-    const store = useStore()
-    const canvasScale = computed(() => store.state.canvasScale)
-    const clipingImageElementId = computed(() => store.state.clipingImageElementId)
-    const isCliping = computed(() => clipingImageElementId.value === props.elementInfo.id)
-
-    const scaleWidth = computed(() => props.elementInfo.width * canvasScale.value)
-    const scaleHeight = computed(() => props.elementInfo.height * canvasScale.value)
-    const { resizeHandlers, borderLines } = useCommonOperate(scaleWidth, scaleHeight)
-
-    return {
-      isCliping,
-      scaleWidth,
-      resizeHandlers,
-      borderLines,
-    }
+  rotateElement: {
+    type: Function as PropType<(element: PPTImageElement) => void>,
+    required: true,
+  },
+  scaleElement: {
+    type: Function as PropType<(e: MouseEvent, element: PPTImageElement, command: OperateResizeHandlers) => void>,
+    required: true,
   },
 })
+
+const { canvasScale, clipingImageElementId } = storeToRefs(useMainStore())
+
+const isCliping = computed(() => clipingImageElementId.value === props.elementInfo.id)
+
+const scaleWidth = computed(() => props.elementInfo.width * canvasScale.value)
+const scaleHeight = computed(() => props.elementInfo.height * canvasScale.value)
+const { resizeHandlers, borderLines } = useCommonOperate(scaleWidth, scaleHeight)
 </script>
 
 <style lang="scss" scoped>

@@ -7,12 +7,13 @@
       :type="line.type" 
       :style="line.style"
     />
-    <template v-if="!elementInfo.lock && (isActiveGroupElement || !isMultiSelect)">
+    <template v-if="handlerVisible">
       <ResizeHandler
         class="operate-resize-handler" 
-        v-for="point in textElementResizeHandlers"
+        v-for="point in resizeHandlers"
         :key="point.direction"
         :type="point.direction"
+        :rotate="elementInfo.rotate"
         :style="point.style"
         @mousedown.stop="$event => scaleElement($event, elementInfo, point.direction)"
       />
@@ -26,61 +27,47 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, PropType } from 'vue'
-import { useStore } from '@/store'
+export default {
+  inheritAttrs: false,
+}
+</script>
 
+<script lang="ts" setup>
+import { computed, PropType } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMainStore } from '@/store'
 import { PPTTextElement } from '@/types/slides'
-import { OperateResizeHandler } from '@/types/edit'
+import { OperateResizeHandlers } from '@/types/edit'
 import useCommonOperate from '../hooks/useCommonOperate'
 
 import RotateHandler from './RotateHandler.vue'
 import ResizeHandler from './ResizeHandler.vue'
 import BorderLine from './BorderLine.vue'
 
-export default defineComponent({
-  name: 'text-element-operate',
-  inheritAttrs: false,
-  components: {
-    RotateHandler,
-    ResizeHandler,
-    BorderLine,
+const props = defineProps({
+  elementInfo: {
+    type: Object as PropType<PPTTextElement>,
+    required: true,
   },
-  props: {
-    elementInfo: {
-      type: Object as PropType<PPTTextElement>,
-      required: true,
-    },
-    isActiveGroupElement: {
-      type: Boolean,
-      required: true,
-    },
-    isMultiSelect: {
-      type: Boolean,
-      required: true,
-    },
-    rotateElement: {
-      type: Function as PropType<(element: PPTTextElement) => void>,
-      required: true,
-    },
-    scaleElement: {
-      type: Function as PropType<(e: MouseEvent, element: PPTTextElement, command: OperateResizeHandler) => void>,
-      required: true,
-    },
+  handlerVisible: {
+    type: Boolean,
+    required: true,
   },
-  setup(props) {
-    const store = useStore()
-    const canvasScale = computed(() => store.state.canvasScale)
-
-    const scaleWidth = computed(() => props.elementInfo.width * canvasScale.value)
-    const scaleHeight = computed(() => props.elementInfo.height * canvasScale.value)
-
-    const { textElementResizeHandlers, borderLines } = useCommonOperate(scaleWidth, scaleHeight)
-
-    return {
-      scaleWidth,
-      textElementResizeHandlers,
-      borderLines,
-    }
+  rotateElement: {
+    type: Function as PropType<(element: PPTTextElement) => void>,
+    required: true,
+  },
+  scaleElement: {
+    type: Function as PropType<(e: MouseEvent, element: PPTTextElement, command: OperateResizeHandlers) => void>,
+    required: true,
   },
 })
+
+const { canvasScale } = storeToRefs(useMainStore())
+
+const scaleWidth = computed(() => props.elementInfo.width * canvasScale.value)
+const scaleHeight = computed(() => props.elementInfo.height * canvasScale.value)
+
+const { textElementResizeHandlers, verticalTextElementResizeHandlers, borderLines } = useCommonOperate(scaleWidth, scaleHeight)
+const resizeHandlers = computed(() => props.elementInfo.vertical ? verticalTextElementResizeHandlers.value : textElementResizeHandlers.value)
 </script>

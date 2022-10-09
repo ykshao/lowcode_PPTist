@@ -1,5 +1,6 @@
-import { Ref, computed } from 'vue'
-import { MutationTypes, useStore } from '@/store'
+import { Ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMainStore, useSlidesStore, useKeyboardStore } from '@/store'
 import { PPTElement } from '@/types/slides'
 import { AlignmentLineProps } from '@/types/edit'
 import { VIEWPORT_SIZE } from '@/configs/canvas'
@@ -9,16 +10,19 @@ import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 export default (
   elementList: Ref<PPTElement[]>,
   alignmentLines: Ref<AlignmentLineProps[]>,
+  canvasScale: Ref<number>,
 ) => {
-  const store = useStore()
-  const activeElementIdList = computed(() => store.state.activeElementIdList)
-  const activeGroupElementId = computed(() => store.state.activeGroupElementId)
-  const canvasScale = computed(() => store.state.canvasScale)
-  const viewportRatio = computed(() => store.state.viewportRatio)
+  const slidesStore = useSlidesStore()
+  const { activeElementIdList, activeGroupElementId } = storeToRefs(useMainStore())
+  const { shiftKeyState } = storeToRefs(useKeyboardStore())
+  const { viewportRatio } = storeToRefs(slidesStore)
 
   const { addHistorySnapshot } = useHistorySnapshot()
 
-  const dragElement = (e: MouseEvent, element: PPTElement) => {
+  const dragElement = (e: MouseEvent | TouchEvent, element: PPTElement) => {
+    const isTouchEvent = !(e instanceof MouseEvent)
+    if (isTouchEvent && (!e.changedTouches || !e.changedTouches[0])) return
+
     if (!activeElementIdList.value.includes(element.id)) return
     let isMouseDown = true
 
@@ -36,8 +40,8 @@ export default (
     const elOriginHeight = ('height' in element && element.height) ? element.height : 0
     const elOriginRotate = ('rotate' in element && element.rotate) ? element.rotate : 0
   
-    const startPageX = e.pageX
-    const startPageY = e.pageY
+    const startPageX = isTouchEvent ? e.changedTouches[0].pageX : e.pageX
+    const startPageY = isTouchEvent ? e.changedTouches[0].pageY : e.pageY
 
     let isMisoperation: boolean | null = null
 
@@ -106,10 +110,9 @@ export default (
     horizontalLines = uniqAlignLines(horizontalLines)
     verticalLines = uniqAlignLines(verticalLines)
 
-    // 开始移动
-    document.onmousemove = e => {
-      const currentPageX = e.pageX
-      const currentPageY = e.pageY
+    const handleMousemove = (e: MouseEvent | TouchEvent) => {
+      const currentPageX = e instanceof MouseEvent ? e.pageX : e.changedTouches[0].pageX
+      const currentPageY = e instanceof MouseEvent ? e.pageY : e.changedTouches[0].pageY
 
       // 如果鼠标滑动距离过小，则将操作判定为误操作：
       // 如果误操作标记为null，表示是第一次触发移动，需要计算当前是否是误操作
@@ -120,9 +123,14 @@ export default (
                          Math.abs(startPageY - currentPageY) < sorptionRange
       }
       if (!isMouseDown || isMisoperation) return
+      
+      let moveX = (currentPageX - startPageX) / canvasScale.value
+      let moveY = (currentPageY - startPageY) / canvasScale.value
 
-      const moveX = (currentPageX - startPageX) / canvasScale.value
-      const moveY = (currentPageY - startPageY) / canvasScale.value
+      if (shiftKeyState.value) {
+        if (Math.abs(moveX) > Math.abs(moveY)) moveY = 0
+        if (Math.abs(moveX) < Math.abs(moveY)) moveX = 0
+      }
 
       // 基础目标位置
       let targetLeft = elOriginLeft + moveX
@@ -285,19 +293,32 @@ export default (
       }
     }
 
-    document.onmouseup = e => {
+    const handleMouseup = (e: MouseEvent | TouchEvent) => {
       isMouseDown = false
+      
+      document.ontouchmove = null
+      document.ontouchend = null
       document.onmousemove = null
       document.onmouseup = null
+
       alignmentLines.value = []
 
-      const currentPageX = e.pageX
-      const currentPageY = e.pageY
+      const currentPageX = e instanceof MouseEvent ? e.pageX : e.changedTouches[0].pageX
+      const currentPageY = e instanceof MouseEvent ? e.pageY : e.changedTouches[0].pageY
 
       if (startPageX === currentPageX && startPageY === currentPageY) return
 
-      store.commit(MutationTypes.UPDATE_SLIDE, { elements: elementList.value })
+      slidesStore.updateSlide({ elements: elementList.value })
       addHistorySnapshot()
+    }
+
+    if (isTouchEvent) {
+      document.ontouchmove = handleMousemove
+      document.ontouchend = handleMouseup
+    }
+    else {
+      document.onmousemove = handleMousemove
+      document.onmouseup = handleMouseup
     }
   }
 

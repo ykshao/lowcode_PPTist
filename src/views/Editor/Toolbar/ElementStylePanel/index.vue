@@ -1,16 +1,14 @@
 <template>
   <div class="element-style-panel">
-    <div v-if="!currentPanelComponent">
-      请先选中要编辑的元素
-    </div>
-    <component v-if="handleElement" :is="currentPanelComponent"></component>
+    <component :is="currentPanelComponent"></component>
   </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent } from 'vue'
-import { useStore } from '@/store'
-import { ElementTypes, PPTElement } from '@/types/slides'
+<script lang="ts" setup>
+import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMainStore } from '@/store'
+import { ElementTypes } from '@/types/slides'
 
 import TextStylePanel from './TextStylePanel.vue'
 import ImageStylePanel from './ImageStylePanel.vue'
@@ -18,31 +16,33 @@ import ShapeStylePanel from './ShapeStylePanel.vue'
 import LineStylePanel from './LineStylePanel.vue'
 import ChartStylePanel from './ChartStylePanel/index.vue'
 import TableStylePanel from './TableStylePanel.vue'
+import LatexStylePanel from './LatexStylePanel.vue'
+import VideoStylePanel from './VideoStylePanel.vue'
+import AudioStylePanel from './AudioStylePanel.vue'
+import MultiStylePanel from './MultiStylePanel.vue'
 
-export default defineComponent({
-  name: 'element-style-panel',
-  setup() {
-    const store = useStore()
-    const handleElement = computed<PPTElement>(() => store.getters.handleElement)
+const panelMap = {
+  [ElementTypes.TEXT]: TextStylePanel,
+  [ElementTypes.IMAGE]: ImageStylePanel,
+  [ElementTypes.SHAPE]: ShapeStylePanel,
+  [ElementTypes.LINE]: LineStylePanel,
+  [ElementTypes.CHART]: ChartStylePanel,
+  [ElementTypes.TABLE]: TableStylePanel,
+  [ElementTypes.LATEX]: LatexStylePanel,
+  [ElementTypes.VIDEO]: VideoStylePanel,
+  [ElementTypes.AUDIO]: AudioStylePanel,
+}
 
-    const currentPanelComponent = computed(() => {
-      if (!handleElement.value) return null
-      
-      const panelMap = {
-        [ElementTypes.TEXT]: TextStylePanel,
-        [ElementTypes.IMAGE]: ImageStylePanel,
-        [ElementTypes.SHAPE]: ShapeStylePanel,
-        [ElementTypes.LINE]: LineStylePanel,
-        [ElementTypes.CHART]: ChartStylePanel,
-        [ElementTypes.TABLE]: TableStylePanel,
-      }
-      return panelMap[handleElement.value.type] || null
-    })
+const { activeElementIdList, activeElementList, handleElement, activeGroupElementId } = storeToRefs(useMainStore())
 
-    return {
-      handleElement,
-      currentPanelComponent,
-    }
-  },
+const currentPanelComponent = computed(() => {
+  if (activeElementIdList.value.length > 1) {
+    if (!activeGroupElementId.value) return MultiStylePanel
+
+    const activeGroupElement = activeElementList.value.find(item => item.id === activeGroupElementId.value)
+    return activeGroupElement ? (panelMap[activeGroupElement.type] || null) : null
+  }
+
+  return handleElement.value ? (panelMap[handleElement.value.type] || null) : null
 })
 </script>

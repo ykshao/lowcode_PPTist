@@ -1,22 +1,23 @@
-import { Ref, computed } from 'vue'
-import { MutationTypes, useStore } from '@/store'
+import { Ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMainStore, useSlidesStore } from '@/store'
 import { PPTElement, PPTLineElement } from '@/types/slides'
-import { OperateLineHandler, OperateLineHandlers } from '@/types/edit'
+import { OperateLineHandlers } from '@/types/edit'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 interface AdsorptionPoint {
-  x: number;
-  y: number;
+  x: number
+  y: number
 }
 
 export default (elementList: Ref<PPTElement[]>) => {
-  const store = useStore()
-  const canvasScale = computed(() => store.state.canvasScale)
+  const slidesStore = useSlidesStore()
+  const { canvasScale } = storeToRefs(useMainStore())
 
   const { addHistorySnapshot } = useHistorySnapshot()
 
   // 拖拽线条端点
-  const dragLineElement = (e: MouseEvent, element: PPTLineElement, command: OperateLineHandler) => {
+  const dragLineElement = (e: MouseEvent, element: PPTLineElement, command: OperateLineHandlers) => {
     let isMouseDown = true
 
     const sorptionRange = 8
@@ -29,7 +30,7 @@ export default (elementList: Ref<PPTElement[]>) => {
     // 获取所有线条以外的未旋转的元素的8个缩放点作为吸附位置
     for (let i = 0; i < elementList.value.length; i++) {
       const _element = elementList.value[i]
-      if (_element.type === 'line' || ('rotate' in _element && _element.rotate)) continue
+      if (_element.type === 'line' || _element.rotate) continue
 
       const left = _element.left
       const top = _element.top
@@ -82,6 +83,12 @@ export default (elementList: Ref<PPTElement[]>) => {
       let midX = element.left + mid[0]
       let midY = element.top + mid[1]
 
+      const [c1, c2] = element.cubic || [[0, 0], [0, 0]]
+      let c1X = element.left + c1[0]
+      let c1Y = element.top + c1[1]
+      let c2X = element.left + c2[0]
+      let c2Y = element.top + c2[1]
+
       // 拖拽起点或终点的位置
       // 水平和垂直方向上有吸附
       if (command === OperateLineHandlers.START) {
@@ -116,7 +123,7 @@ export default (elementList: Ref<PPTElement[]>) => {
           }
         }
       }
-      else {
+      else if (command === OperateLineHandlers.C) {
         midX = midX + moveX
         midY = midY + moveY
 
@@ -128,6 +135,24 @@ export default (elementList: Ref<PPTElement[]>) => {
           midX = (startX + endX) / 2
           midY = (startY + endY) / 2
         }
+      }
+      else if (command === OperateLineHandlers.C1) {
+        c1X = c1X + moveX
+        c1Y = c1Y + moveY
+
+        if (Math.abs(c1X - startX) < sorptionRange) c1X = startX
+        if (Math.abs(c1Y - startY) < sorptionRange) c1Y = startY
+        if (Math.abs(c1X - endX) < sorptionRange) c1X = endX
+        if (Math.abs(c1Y - endY) < sorptionRange) c1Y = endY
+      }
+      else if (command === OperateLineHandlers.C2) {
+        c2X = c2X + moveX
+        c2Y = c2Y + moveY
+
+        if (Math.abs(c2X - startX) < sorptionRange) c2X = startX
+        if (Math.abs(c2Y - startY) < sorptionRange) c2Y = startY
+        if (Math.abs(c2X - endX) < sorptionRange) c2X = endX
+        if (Math.abs(c2Y - endY) < sorptionRange) c2Y = endY
       }
 
       // 计算更新起点和终点基于自身元素位置的坐标
@@ -156,13 +181,17 @@ export default (elementList: Ref<PPTElement[]>) => {
             start: start,
             end: end,
           }
-          if (command !== OperateLineHandlers.MID) {
+          if (command === OperateLineHandlers.START || command === OperateLineHandlers.END) {
             if (element.broken) newEl.broken = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2]
             if (element.curve) newEl.curve = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2]
+            if (element.cubic) newEl.cubic = [[(start[0] + end[0]) / 2, (start[1] + end[1]) / 2], [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2]]
           }
-          else {
+          else if (command === OperateLineHandlers.C) {
             if (element.broken) newEl.broken = [midX - minX, midY - minY]
             if (element.curve) newEl.curve = [midX - minX, midY - minY]
+          }
+          else {
+            if (element.cubic) newEl.cubic = [[c1X - minX, c1Y - minY], [c2X - minX, c2Y - minY]]
           }
           return newEl
         }
@@ -180,7 +209,7 @@ export default (elementList: Ref<PPTElement[]>) => {
 
       if (startPageX === currentPageX && startPageY === currentPageY) return
 
-      store.commit(MutationTypes.UPDATE_SLIDE, { elements: elementList.value })
+      slidesStore.updateSlide({ elements: elementList.value })
       addHistorySnapshot()
     }
   }

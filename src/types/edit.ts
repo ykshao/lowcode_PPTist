@@ -1,18 +1,15 @@
 import { ShapePoolItem } from '@/configs/shapes'
 import { LinePoolItem } from '@/configs/lines'
+import { ImageClipDataRange } from './slides'
 
-export type ElementOrderCommand = 'up' | 'down' | 'top' | 'bottom'
-
-export const enum ElementOrderCommands {
+export enum ElementOrderCommands {
   UP = 'up',
   DOWN = 'down',
   TOP = 'top',
   BOTTOM = 'bottom',
 }
 
-export type ElementAlignCommand = 'top'| 'bottom' | 'left' | 'right' | 'vertical' | 'horizontal' | 'center'
-
-export const enum ElementAlignCommands {
+export enum ElementAlignCommands {
   TOP = 'top',
   BOTTOM = 'bottom',
   LEFT = 'left',
@@ -22,16 +19,12 @@ export const enum ElementAlignCommands {
   CENTER = 'center',
 }
 
-export type OperateBorderLine = 'top' | 'bottom' | 'left' | 'right'
-
 export const enum OperateBorderLines {
   T = 'top',
   B = 'bottom',
   L = 'left',
   R = 'right',
 }
-
-export type OperateResizeHandler = '' | 'left-top' | 'top' | 'right-top' | 'left' | 'right' | 'left-bottom' | 'bottom' | 'right-bottom'
 
 export const enum OperateResizeHandlers {
   LEFT_TOP = 'left-top',
@@ -44,63 +37,69 @@ export const enum OperateResizeHandlers {
   RIGHT_BOTTOM = 'right-bottom',
 }
 
-export type OperateLineHandler = 'start' | 'end' | 'mid'
-
 export const enum OperateLineHandlers {
   START = 'start',
   END = 'end',
-  MID = 'mid',
+  C = 'ctrl',
+  C1 = 'ctrl1',
+  C2 = 'ctrl2',
 }
 
 export interface AlignmentLineAxis {
-  x: number; 
-  y: number;
+  x: number
+  y: number
 }
 
 export interface AlignmentLineProps {
-  type: 'vertical' | 'horizontal';
-  axis: AlignmentLineAxis;
-  length: number;
+  type: 'vertical' | 'horizontal'
+  axis: AlignmentLineAxis
+  length: number
 }
 
 export interface MultiSelectRange {
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
-}
-
-export type ImageClipDataRange = [[number, number], [number, number]]
-
-export interface ImageClipData {
-  range: ImageClipDataRange;
-  path: string;
+  minX: number
+  maxX: number
+  minY: number
+  maxY: number
 }
 
 export interface ImageClipedEmitData {
-  range: ImageClipDataRange;
+  range: ImageClipDataRange
   position: {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  };
+    left: number
+    top: number
+    width: number
+    height: number
+  }
 }
 
 export interface CreateElementSelectionData {
-  start: [number, number];
-  end: [number, number];
+  start: [number, number]
+  end: [number, number]
 }
 
 export interface CreatingTextElement {
-  type: 'text';
+  type: 'text'
+  vertical?: boolean
 }
 export interface CreatingShapeElement {
-  type: 'shape';
-  data: ShapePoolItem;
+  type: 'shape'
+  data: ShapePoolItem
 }
 export interface CreatingLineElement {
-  type: 'line';
-  data: LinePoolItem;
+  type: 'line'
+  data: LinePoolItem
 }
 export type CreatingElement = CreatingTextElement | CreatingShapeElement | CreatingLineElement
+
+export interface TextFormatPainter {
+  bold?: boolean
+  em?: boolean
+  underline?: boolean
+  strikethrough?: boolean
+  color?: string
+  backcolor?: string
+  fontsize?: string
+  fontname?: string
+  align?: 'left' | 'right' | 'center'
+}

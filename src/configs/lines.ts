@@ -1,12 +1,21 @@
+import { LinePoint } from '@/types/slides'
+
+
 export interface LinePoolItem {
-  path: string;
-  style: string;
-  points: [string, string];
-  isBroken?: boolean;
-  isCurve?: boolean;
+  path: string
+  style: 'solid' | 'dashed'
+  points: [LinePoint, LinePoint]
+  isBroken?: boolean
+  isCurve?: boolean
+  isCubic?: boolean
 }
 
-export const LINE_LIST = [
+interface PresetLine {
+  type: string
+  children: LinePoolItem[]
+}
+
+export const LINE_LIST: PresetLine[] = [
   {
     type: '直线',
     children: [
@@ -22,6 +31,7 @@ export const LINE_LIST = [
     children: [
       { path: 'M 0 0 L 0 20 L 20 20', style: 'solid', points: ['', 'arrow'], isBroken: true },
       { path: 'M 0 0 Q 0 20 20 20', style: 'solid', points: ['', 'arrow'], isCurve: true },
+      { path: 'M 0 0 C 20 0 0 20 20 20', style: 'solid', points: ['', 'arrow'], isCubic: true },
     ],
   },
 ]
