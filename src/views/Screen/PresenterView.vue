@@ -34,8 +34,8 @@
         <WritingBoardTool 
           :slideWidth="slideWidth"
           :slideHeight="slideHeight"
-          :left="75"
-          :top="5"
+          :left="-365"
+          :top="-155"
           v-if="writingBoardToolVisible" 
           @close="writingBoardToolVisible = false" 
         />
@@ -93,6 +93,7 @@ import ThumbnailSlide from '@/views/components/ThumbnailSlide/index.vue'
 import ScreenSlideList from './ScreenSlideList.vue'
 import WritingBoardTool from './WritingBoardTool.vue'
 import CountdownTimer from './CountdownTimer.vue'
+import { Divider } from 'ant-design-vue'
 
 const props = defineProps({
   changeViewMode: {

@@ -8,11 +8,7 @@
             <FileInput accept=".pptist"  @change="files => importSpecificFile(files)">
               <MenuItem>导入 pptist 文件</MenuItem>
             </FileInput>
-            <MenuItem @click="setDialogForExport('pptist')">导出 pptist 文件</MenuItem>
-            <MenuItem @click="setDialogForExport('pptx')">导出 PPTX</MenuItem>
-            <MenuItem @click="setDialogForExport('image')">导出图片</MenuItem>
-            <MenuItem @click="setDialogForExport('json')">导出 JSON</MenuItem>
-            <MenuItem @click="setDialogForExport('pdf')">打印 / 导出 PDF</MenuItem>
+            <MenuItem @click="setDialogForExport('pptx')">导出文件</MenuItem>
           </Menu>
         </template>
       </Dropdown>
@@ -90,6 +86,14 @@ import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 import useExport from '@/hooks/useExport'
 
 import HotkeyDoc from './HotkeyDoc.vue'
+import FileInput from '@/components/FileInput.vue'
+import {
+  Tooltip,
+  Dropdown,
+  Menu,
+  Drawer,
+} from 'ant-design-vue'
+const MenuItem = Menu.Item
 
 const mainStore = useMainStore()
 const { gridLineSize, showRuler, showSelectPanel } = storeToRefs(mainStore)

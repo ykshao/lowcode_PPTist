@@ -14,6 +14,7 @@
     
     <InputGroup compact class="row">
       <Select
+        class="font-select"
         style="flex: 3;"
         :value="richTextAttrs.fontname"
         @change="value => emitRichTextCommand('fontname', value as string)"
@@ -200,22 +201,57 @@
       </Tooltip>
     </RadioGroup>
 
-    <CheckboxButtonGroup class="row">
-      <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="项目符号">
-        <CheckboxButton 
-          style="flex: 1;" 
-          :checked="richTextAttrs.bulletList"
-          @click="emitRichTextCommand('bulletList')"
-        ><IconList /></CheckboxButton>
-      </Tooltip>
-      <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="编号">
-        <CheckboxButton 
-          style="flex: 1;" 
-          :checked="richTextAttrs.orderedList"
-          @click="emitRichTextCommand('orderedList')"
-        ><IconOrderedList /></CheckboxButton>
-      </Tooltip>
-    </CheckboxButtonGroup>
+    <div class="row">
+      <ButtonGroup style="flex: 15;">
+        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="项目符号">
+          <Button
+            :type="richTextAttrs.bulletList ? 'primary' : 'default'"
+            style="flex: 1;"
+            @click="emitRichTextCommand('bulletList')"
+          ><IconList /></Button>
+        </Tooltip>
+        <Popover trigger="click" v-model:visible="bulletListPanelVisible">
+          <template #content>
+            <div class="list-wrap">
+              <ul class="list" 
+                v-for="item in bulletListStyleTypeOption" 
+                :key="item" 
+                :style="{ listStyleType: item }"
+                @click="emitRichTextCommand('bulletList', item)"
+              >
+                <li class="list-item" v-for="key in 3" :key="key"><span></span></li>
+              </ul>
+            </div>
+          </template>
+          <Button class="popover-btn"><IconDown /></Button>
+        </Popover>
+      </ButtonGroup>
+      <div style="flex: 1;"></div>
+      <ButtonGroup style="flex: 15;">
+        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="编号">
+          <Button
+            :type="richTextAttrs.orderedList ? 'primary' : 'default'"
+            style="flex: 1;"
+            @click="emitRichTextCommand('orderedList')"
+          ><IconOrderedList /></Button>
+        </Tooltip>
+        <Popover trigger="click" v-model:visible="orderedListPanelVisible">
+          <template #content>
+            <div class="list-wrap">
+              <ul class="list" 
+                v-for="item in orderedListStyleTypeOption" 
+                :key="item" 
+                :style="{ listStyleType: item }"
+                @click="emitRichTextCommand('orderedList', item)"
+              >
+                <li class="list-item" v-for="key in 3" :key="key"><span></span></li>
+              </ul>
+            </div>
+          </template>
+          <Button class="popover-btn"><IconDown /></Button>
+        </Popover>
+      </ButtonGroup>
+    </div>
 
     <ButtonGroup class="row">
       <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="减小缩进">
@@ -288,13 +324,28 @@ import { WEB_FONTS } from '@/configs/font'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 import useTextFormatPainter from '@/hooks/useTextFormatPainter'
 
-import { message } from 'ant-design-vue'
-
 import ElementOpacity from '../common/ElementOpacity.vue'
 import ElementOutline from '../common/ElementOutline.vue'
 import ElementShadow from '../common/ElementShadow.vue'
 import ColorButton from '../common/ColorButton.vue'
 import TextColorButton from '../common/TextColorButton.vue'
+import CheckboxButton from '@/components/CheckboxButton.vue'
+import CheckboxButtonGroup from '@/components/CheckboxButtonGroup.vue'
+import ColorPicker from '@/components/ColorPicker/index.vue'
+import {
+  Divider,
+  Button,
+  Tooltip,
+  Popover,
+  Select,
+  Radio,
+  Input,
+  message,
+} from 'ant-design-vue'
+const { Group: RadioGroup, Button: RadioButton } = Radio
+const { OptGroup: SelectOptGroup, Option: SelectOption } = Select
+const InputGroup = Input.Group
+const ButtonGroup = Button.Group
 
 // 注意，存在一个未知原因的BUG，如果文本加粗后文本框高度增加，画布的可视区域定位会出现错误
 // 因此在执行预置样式命令时，将加粗命令放在尽可能靠前的位置，避免字号增大后再加粗
@@ -382,6 +433,12 @@ const updateElement = (props: Partial<PPTTextElement>) => {
   slidesStore.updateElement({ id: handleElementId.value, props })
   addHistorySnapshot()
 }
+
+const bulletListPanelVisible = ref(false)
+const orderedListPanelVisible = ref(false)
+
+const bulletListStyleTypeOption = ref(['disc', 'circle', 'square'])
+const orderedListStyleTypeOption = ref(['decimal', 'lower-roman', 'upper-roman', 'lower-alpha', 'upper-alpha', 'lower-greek'])
 
 const fill = ref<string>('#000')
 const lineHeight = ref<number>()
@@ -504,6 +561,9 @@ const updateLink = (link?: string) => {
     margin-top: -1px;
   }
 }
+.font-select {
+  max-width: 50%;
+}
 .font-size-btn {
   padding: 0;
 }
@@ -514,5 +574,56 @@ const updateLink = (link?: string) => {
     margin-top: 10px;
     text-align: right;
   }
+}
+
+.list-wrap {
+  width: 176px;
+  color: #666;
+  padding: 8px;
+  margin: -12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+}
+.list {
+  background-color: $lightGray;
+  padding: 4px 4px 4px 20px;
+  cursor: pointer;
+
+  &:not(:nth-child(3n)) {
+    margin-right: 8px;
+  }
+
+  &:nth-child(4),
+  &:nth-child(5),
+  &:nth-child(6) {
+    margin-top: 8px;
+  }
+
+  &:hover {
+    color: $themeColor;
+
+    span {
+      background-color: $themeColor;
+    }
+  }
+}
+.list-item {
+  width: 24px;
+  height: 12px;
+  position: relative;
+  top: -5px;
+
+  span {
+    width: 100%;
+    height: 2px;
+    display: inline-block;
+    position: absolute;
+    top: 10px;
+    background-color: #666;
+  }
+}
+.popover-btn {
+  padding: 0 3px;
 }
 </style>

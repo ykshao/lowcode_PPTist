@@ -3,6 +3,7 @@
     class="prosemirror-editor" 
     :class="{ 'format-painter': textFormatPainter }"
     ref="editorViewRef"
+    @mousedown="$event => emit('mousedown', $event)"
   ></div>
 </template>
 
@@ -51,6 +52,7 @@ const emit = defineEmits<{
   (event: 'update', payload: string): void
   (event: 'focus'): void
   (event: 'blur'): void
+  (event: 'mousedown', payload: MouseEvent): void
 }>()
 
 const mainStore = useMainStore()
@@ -188,12 +190,14 @@ const execCommand = ({ target, action }: RichTextCommand) => {
       indentCommand(editorView, +item.value)
     }
     else if (item.command === 'bulletList') {
+      const listStyleType = item.value || ''
       const { bullet_list: bulletList, list_item: listItem } = editorView.state.schema.nodes
-      toggleList(bulletList, listItem)(editorView.state, editorView.dispatch)
+      toggleList(bulletList, listItem, listStyleType)(editorView.state, editorView.dispatch)
     }
     else if (item.command === 'orderedList') {
+      const listStyleType = item.value || ''
       const { ordered_list: orderedList, list_item: listItem } = editorView.state.schema.nodes
-      toggleList(orderedList, listItem)(editorView.state, editorView.dispatch)
+      toggleList(orderedList, listItem, listStyleType)(editorView.state, editorView.dispatch)
     }
     else if (item.command === 'clear') {
       autoSelectAll(editorView)

@@ -50,7 +50,6 @@
           }"
           @update="value => updateContent(value)"
           @mousedown="$event => handleSelectElement($event, false)"
-          @touchstart="$event => handleSelectElement($event)"
         />
 
         <!-- 当字号过大且行高较小时，会出现文字高度溢出的情况，导致拖拽区域无法被选中，因此添加了以下节点避免该情况 -->
@@ -64,6 +63,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, PropType, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { debounce } from 'lodash'
 import { useMainStore, useSlidesStore } from '@/store'
 import { PPTTextElement } from '@/types/slides'
 import { ContextmenuItem } from '@/components/Contextmenu/types'
@@ -175,10 +175,10 @@ const updateContent = (content: string) => {
   addHistorySnapshot()
 }
 
-const checkEmptyText = () => {
+const checkEmptyText = debounce(function() {
   const pureText = props.elementInfo.content.replaceAll(/<[^>]+>/g, '')
   if (!pureText) slidesStore.deleteElement(props.elementInfo.id)
-}
+}, 300, { trailing: true })
 
 const isHandleElement = computed(() => handleElementId.value === props.elementInfo.id)
 watch(isHandleElement, () => {
