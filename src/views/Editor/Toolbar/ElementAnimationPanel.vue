@@ -55,12 +55,12 @@
     <Draggable 
       class="animation-sequence"
       :modelValue="animationSequence"
-      :animation="300"
+      :animation="200"
       :scroll="true"
       :scrollSensitivity="50"
       handle=".sequence-content"
-      @end="handleDragEnd"
       itemKey="id"
+      @end="handleDragEnd"
     >
       <template #item="{ element }">
         <div class="sequence-item" :class="[element.type, { 'active': handleElement?.id === element.elId }]">
@@ -129,6 +129,7 @@ import {
 } from '@/configs/animation'
 import { ELEMENT_TYPE_ZH } from '@/configs/element'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
+
 
 import Draggable from 'vuedraggable'
 import {
@@ -226,7 +227,7 @@ const deleteAnimation = (id: string) => {
 // 拖拽修改动画顺序后同步数据
 const handleDragEnd = (eventData: { newIndex: number; oldIndex: number }) => {
   const { newIndex, oldIndex } = eventData
-  if (oldIndex === newIndex) return
+  if (newIndex === undefined || oldIndex === undefined || newIndex === oldIndex) return
 
   const animations: PPTAnimation[] = JSON.parse(JSON.stringify(currentSlideAnimations.value))
   const animation = animations[oldIndex]
