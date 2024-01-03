@@ -1,8 +1,8 @@
 import tinycolor from 'tinycolor2'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
-import { Slide } from '@/types/slides'
-import { PresetTheme } from '@/configs/theme'
+import type { Slide } from '@/types/slides'
+import type { PresetTheme } from '@/configs/theme'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 export default () => {
@@ -46,7 +46,7 @@ export default () => {
   // 创建原颜色与新颜色的对应关系表
   const createSlideThemeColorMap = (slide: Slide, newColors: string[]): { [key: string]: string } => {
     const oldColors = getSlideAllColors(slide)
-    const themeColorMap = {}
+    const themeColorMap: { [key: string]: string } = {}
   
     if (oldColors.length > newColors.length) {
       const analogous = tinycolor(newColors[0]).analogous(oldColors.length - newColors.length + 10)
@@ -129,9 +129,9 @@ export default () => {
   }
   
   // 将当前主题配置应用到全部页面
-  const applyThemeToAllSlides = () => {
+  const applyThemeToAllSlides = (applyAll = false) => {
     const newSlides: Slide[] = JSON.parse(JSON.stringify(slides.value))
-    const { themeColor, backgroundColor, fontColor, fontName } = theme.value
+    const { themeColor, backgroundColor, fontColor, fontName, outline, shadow } = theme.value
   
     for (const slide of newSlides) {
       if (!slide.background || slide.background.type !== 'image') {
@@ -142,6 +142,11 @@ export default () => {
       }
   
       for (const el of slide.elements) {
+        if (applyAll) {
+          if ('outline' in el && el.outline) el.outline = outline
+          if ('shadow' in el && el.shadow) el.shadow = shadow
+        }
+
         if (el.type === 'shape') el.fill = themeColor
         else if (el.type === 'line') el.color = themeColor
         else if (el.type === 'text') {

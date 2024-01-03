@@ -17,15 +17,12 @@
   </div>
 
   <SelectPanel v-if="showSelectPanel" />
+  <SearchPanel v-if="showSearchPanel" />
 
   <Modal
     :visible="!!dialogForExport" 
-    :footer="null" 
-    centered
-    :closable="false"
     :width="680"
-    destroyOnClose
-    @cancel="closeExportDialog()"
+    @closed="closeExportDialog()"
   >
     <ExportDialog />
   </Modal>
@@ -46,10 +43,11 @@ import Toolbar from './Toolbar/index.vue'
 import Remark from './Remark/index.vue'
 import ExportDialog from './ExportDialog/index.vue'
 import SelectPanel from './SelectPanel.vue'
-import { Modal } from 'ant-design-vue'
+import SearchPanel from './SearchPanel.vue'
+import Modal from '@/components/Modal.vue'
 
 const mainStore = useMainStore()
-const { dialogForExport, showSelectPanel } = storeToRefs(mainStore)
+const { dialogForExport, showSelectPanel, showSearchPanel } = storeToRefs(mainStore)
 const closeExportDialog = () => mainStore.setDialogForExport('')
 
 const remarkHeight = ref(40)

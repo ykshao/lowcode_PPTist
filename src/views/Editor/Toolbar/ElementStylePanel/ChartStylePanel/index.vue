@@ -9,99 +9,104 @@
     <template v-if="handleChartElement.chartType === 'line'">
       <div class="row">
         <Checkbox 
-          @change="e => updateOptions({ showArea: e.target.checked })"
-          :checked="showArea" 
+          @update:value="value => updateOptions({ showArea: value })"
+          :value="showArea" 
           style="flex: 1;"
         >面积图样式</Checkbox>
         <Checkbox 
-          @change="e => updateOptions({ showLine: !e.target.checked })"
-          :checked="!showLine" 
+          @update:value="value => updateOptions({ showLine: value })"
+          :value="!showLine" 
           style="flex: 1;"
         >散点图样式</Checkbox>
       </div>
       <div class="row">
         <Checkbox 
-          @change="e => updateOptions({ lineSmooth: e.target.checked })" 
-          :checked="lineSmooth"
+          @update:value="value => updateOptions({ lineSmooth: value })" 
+          :value="lineSmooth"
         >使用平滑曲线</Checkbox>
       </div>
     </template>
     <div class="row" v-if="handleChartElement.chartType === 'bar'">
       <Checkbox 
-        @change="e => updateOptions({ horizontalBars: e.target.checked })" 
-        :checked="horizontalBars"
+        @update:value="value => updateOptions({ horizontalBars: value })" 
+        :value="horizontalBars"
+        style="flex: 1;"
       >条形图样式</Checkbox>
       <Checkbox 
-        @change="e => updateOptions({ stackBars: e.target.checked })" 
-        :checked="stackBars"
+        @update:value="value => updateOptions({ stackBars: value })" 
+        :value="stackBars"
+        style="flex: 1;"
       >堆叠样式</Checkbox>
     </div>
     <div class="row" v-if="handleChartElement.chartType === 'pie'">
       <Checkbox 
-        @change="e => updateOptions({ donut: e.target.checked })" 
-        :checked="donut"
+        @update:value="value => updateOptions({ donut: value })" 
+        :value="donut"
       >环形图样式</Checkbox>
     </div>
 
     <Divider />
 
     <div class="row">
-      <div style="flex: 2;">图例：</div>
-      <Select style="flex: 3;" :value="legend" @change="value => updateLegend(value as '' | 'top' | 'bottom')">
-        <SelectOption value="">不显示</SelectOption>
-        <SelectOption value="top">显示在上方</SelectOption>
-        <SelectOption value="bottom">显示在下方</SelectOption>
-      </Select>
+      <div style="width: 40%;">图例：</div>
+      <Select 
+        style="width: 60%;" 
+        :value="legend" 
+        @update:value="value => updateLegend(value as '' | 'top' | 'bottom')"
+        :options="[
+          { label: '不显示', value: '' },
+          { label: '显示在上方', value: 'top' },
+          { label: '显示在下方', value: 'bottom' },
+        ]"
+      />
     </div>
 
     <Divider />
 
     <div class="row">
-      <div style="flex: 2;">背景填充：</div>
-      <Popover trigger="click">
+      <div style="width: 40%;">背景填充：</div>
+      <Popover trigger="click" style="width: 60%;">
         <template #content>
           <ColorPicker
             :modelValue="fill"
             @update:modelValue="value => updateFill(value)"
           />
         </template>
-        <ColorButton :color="fill" style="flex: 3;" />
+        <ColorButton :color="fill" />
       </Popover>
     </div>
     <div class="row">
-      <div style="flex: 2;">网格颜色：</div>
-      <Popover trigger="click">
+      <div style="width: 40%;">网格颜色：</div>
+      <Popover trigger="click" style="width: 60%;">
         <template #content>
           <ColorPicker
             :modelValue="gridColor"
             @update:modelValue="value => updateGridColor(value)"
           />
         </template>
-        <ColorButton :color="gridColor" style="flex: 3;" />
+        <ColorButton :color="gridColor" />
       </Popover>
     </div>
 
     <Divider />
 
     <div class="row" v-for="(color, index) in themeColor" :key="index">
-      <div style="flex: 2;">{{index === 0 ? '主题配色：' : ''}}</div>
-      <Popover trigger="click">
+      <div style="width: 40%;">{{index === 0 ? '主题配色：' : ''}}</div>
+      <Popover trigger="click" style="width: 60%;">
         <template #content>
           <ColorPicker
             :modelValue="color"
             @update:modelValue="value => updateTheme(value, index)"
           />
         </template>
-        <div class="color-btn-wrap" style="flex: 3;">
-          <ColorButton :color="color" style="width: 100%;" />
-          <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="删除">
-            <div class="delete-color-btn" @click.stop="deleteThemeColor(index)" v-if="index !== 0"><IconCloseSmall /></div>
-          </Tooltip>
+        <div class="color-btn-wrap" style="width: 100%;">
+          <ColorButton :color="color" />
+          <div class="delete-color-btn" v-tooltip="'删除'" @click.stop="deleteThemeColor(index)" v-if="index !== 0"><IconCloseSmall /></div>
         </div>
       </Popover>
     </div>
-    <ButtonGroup class="row">
-      <Popover trigger="click" v-model:visible="presetThemesVisible">
+    <ButtonGroup class="row" passive>
+      <Popover trigger="click" v-model:open="presetThemesVisible" style="width: 40%;">
         <template #content>
           <div class="preset-themes">
             <div class="preset-theme" v-for="(item, index) in presetChartThemes" :key="index">
@@ -118,12 +123,12 @@
             </div>
           </div>
         </template>
-        <Button class="no-padding" style="flex: 2;">推荐主题</Button>
+        <Button first style="width: 100%;">推荐主题</Button>
       </Popover>
-      <Button 
-        class="no-padding" 
+      <Button
+        last
         :disabled="themeColor.length >= 10" 
-        style="flex: 3;" 
+        style="width: 60%;" 
         @click="addThemeColor()"
       >
         <IconPlus class="btn-icon" /> 添加主题色
@@ -136,11 +141,7 @@
 
     <Modal
       v-model:visible="chartDataEditorVisible" 
-      :footer="null" 
-      centered
-      :closable="false"
-      :width="648"
-      destroyOnClose
+      :width="640"
     >
       <ChartDataEditor 
         :data="handleChartElement.data"
@@ -152,10 +153,10 @@
 </template>
 
 <script lang="ts" setup>
-import { onUnmounted, Ref, ref, watch } from 'vue'
+import { onUnmounted, ref, watch, type Ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
-import { ChartData, ChartOptions, PPTChartElement } from '@/types/slides'
+import type { ChartData, ChartOptions, PPTChartElement } from '@/types/slides'
 import emitter, { EmitterEvents } from '@/utils/emitter'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
@@ -163,17 +164,13 @@ import ElementOutline from '../../common/ElementOutline.vue'
 import ColorButton from '../../common/ColorButton.vue'
 import ChartDataEditor from './ChartDataEditor.vue'
 import ColorPicker from '@/components/ColorPicker/index.vue'
-import {
-  Divider,
-  Button,
-  Tooltip,
-  Popover,
-  Select,
-  Modal,
-  Checkbox,
-} from 'ant-design-vue'
-const ButtonGroup = Button.Group
-const SelectOption = Select.Option
+import Modal from '@/components/Modal.vue'
+import Divider from '@/components/Divider.vue'
+import Checkbox from '@/components/Checkbox.vue'
+import Button from '@/components/Button.vue'
+import ButtonGroup from '@/components/ButtonGroup.vue'
+import Select from '@/components/Select.vue'
+import Popover from '@/components/Popover.vue'
 
 const presetChartThemes = [
   ['#d87c7c', '#919e8b', '#d7ab82', '#6e7074', '#61a0a8', '#efa18d'],

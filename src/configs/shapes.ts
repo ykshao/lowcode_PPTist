@@ -11,6 +11,7 @@ export interface ShapePoolItem {
   pathFormula?: ShapePathFormulasKeys
   outlined?: boolean
   pptxShapeType?: string
+  title?: string
 }
 
 interface ShapeListItem {
@@ -160,7 +161,7 @@ export const SHAPE_PATH_FORMULAS = {
     defaultValue: 0.5,
     range: [0, 1],
     relative: 'left',
-    getBaseSize: (width: number, height: number) => width,
+    getBaseSize: (width: number) => width,
     formula: (width: number, height: number, value: number) => {
       const vertex = width * value
       return `M ${vertex} 0 L 0 ${height} L ${width} ${height} Z`
@@ -171,7 +172,7 @@ export const SHAPE_PATH_FORMULAS = {
     defaultValue: 0.25,
     range: [0, 0.9],
     relative: 'left',
-    getBaseSize: (width: number, height: number) => width,
+    getBaseSize: (width: number) => width,
     formula: (width: number, height: number, value: number) => {
       const point = width * value
       return `M ${point} 0 L ${width} 0 L ${width - point} ${height} L 0 ${height} Z`
@@ -182,7 +183,7 @@ export const SHAPE_PATH_FORMULAS = {
     defaultValue: 0.25,
     range: [0, 0.9],
     relative: 'right',
-    getBaseSize: (width: number, height: number) => width,
+    getBaseSize: (width: number) => width,
     formula: (width: number, height: number, value: number) => {
       const point = width * value
       return `M 0 0 L ${width - point} 0 L ${width} ${height} L ${point} ${height} Z`
@@ -193,7 +194,7 @@ export const SHAPE_PATH_FORMULAS = {
     defaultValue: 0.25,
     range: [0, 0.5],
     relative: 'left',
-    getBaseSize: (width: number, height: number) => width,
+    getBaseSize: (width: number) => width,
     formula: (width: number, height: number, value: number) => {
       const point = width * value
       return `M ${point} 0 L ${width - point} 0 L ${width} ${height} L 0 ${height} Z`
@@ -215,7 +216,7 @@ export const SHAPE_PATH_FORMULAS = {
     defaultValue: 0.2,
     range: [0, 0.9],
     relative: 'right',
-    getBaseSize: (width: number, height: number) => width,
+    getBaseSize: (width: number) => width,
     formula: (width: number, height: number, value: number) => {
       const point = width * value
       return `M ${width} ${height / 2} L ${width - point} 0 L 0 0 L ${point} ${height / 2} L 0 ${height} L ${width - point} ${height} Z`
@@ -279,6 +280,11 @@ export const SHAPE_LIST: ShapeListItem[] = [
         path: 'M 50 0 L 200 0 L 200 150 Q 200 200 150 200 L 0 200 L 0 50 Q 0 0 50 0 Z',
         pathFormula: ShapePathFormulasKeys.ROUND_RECT_DIAGONAL,
         pptxShapeType: 'round2DiagRect',
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 0 80 L 60 0 L 100 40 L 180 20 L 200 120 L 160 200 L 0 200 L 60 140 Z',
+        title: '任意多边形',
       },
     ]
   },

@@ -27,29 +27,22 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType, provide } from 'vue'
+import { computed, provide } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
-import { Slide } from '@/types/slides'
+import type { Slide } from '@/types/slides'
 import { injectKeySlideScale } from '@/types/injectKey'
 import { VIEWPORT_SIZE } from '@/configs/canvas'
 import useSlideBackgroundStyle from '@/hooks/useSlideBackgroundStyle'
 
 import ThumbnailElement from './ThumbnailElement.vue'
 
-const props = defineProps({
-  slide: {
-    type: Object as PropType<Slide>,
-    required: true,
-  },
-  size: {
-    type: Number,
-    required: true,
-  },
-  visible: {
-    type: Boolean,
-    default: true,
-  },
+const props = withDefaults(defineProps<{
+  slide: Slide
+  size: number
+  visible?: boolean
+}>(), {
+  visible: true,
 })
 
 const { viewportRatio } = storeToRefs(useSlidesStore())

@@ -21,38 +21,23 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType, provide } from 'vue'
+import { computed, provide } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
-import { Slide } from '@/types/slides'
+import type { Slide } from '@/types/slides'
 import { injectKeySlideId } from '@/types/injectKey'
 import { VIEWPORT_SIZE } from '@/configs/canvas'
 import useSlideBackgroundStyle from '@/hooks/useSlideBackgroundStyle'
 
 import ScreenElement from './ScreenElement.vue'
 
-const props = defineProps({
-  slide: {
-    type: Object as PropType<Slide>,
-    required: true,
-  },
-  scale: {
-    type: Number,
-    required: true,
-  },
-  animationIndex: {
-    type: Number,
-    required: true,
-  },
-  turnSlideToId: {
-    type: Function as PropType<(id: string) => void>,
-    required: true,
-  },
-  manualExitFullscreen: {
-    type: Function as PropType<() => void>,
-    required: true,
-  },
-})
+const props = defineProps<{
+  slide: Slide
+  scale: number
+  animationIndex: number
+  turnSlideToId: (id: string) => void
+  manualExitFullscreen: () => void
+}>()
 
 const { viewportRatio } = storeToRefs(useSlidesStore())
 

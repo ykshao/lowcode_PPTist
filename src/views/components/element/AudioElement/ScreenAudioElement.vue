@@ -1,5 +1,5 @@
 <template>
-  <div class="screen-element-audio"
+  <div class="base-element-audio screen-element-audio"
     :style="{
       top: elementInfo.top + 'px',
       left: elementInfo.left + 'px',
@@ -36,21 +36,18 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, PropType, ref } from 'vue'
+import { computed, inject, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
-import { PPTAudioElement } from '@/types/slides'
+import type { PPTAudioElement } from '@/types/slides'
 import { injectKeySlideId, injectKeySlideScale } from '@/types/injectKey'
 import { VIEWPORT_SIZE } from '@/configs/canvas'
 
 import AudioPlayer from './AudioPlayer.vue'
 
-const props = defineProps({
-  elementInfo: {
-    type: Object as PropType<PPTAudioElement>,
-    required: true,
-  },
-})
+const props = defineProps<{
+  elementInfo: PPTAudioElement
+}>()
 
 const { viewportRatio, currentSlide } = storeToRefs(useSlidesStore())
 
@@ -86,7 +83,7 @@ const audioPlayerPosition = computed(() => {
   }
 })
 
-const audioPlayerRef = ref<typeof AudioPlayer>()
+const audioPlayerRef = ref<InstanceType<typeof AudioPlayer>>()
 const toggle = () => {
   if (!audioPlayerRef.value) return
   audioPlayerRef.value.toggle()

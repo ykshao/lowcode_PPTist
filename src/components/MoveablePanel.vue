@@ -1,9 +1,10 @@
 <template>
   <div 
     class="moveable-panel"
+    ref="moveablePanelRef"
     :style="{
       width: width + 'px',
-      height: height + 'px',
+      height: height ? height + 'px' : 'auto',
       left: x + 'px',
       top: y + 'px',
     }"
@@ -26,33 +27,20 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
-const props = defineProps({
-  width: {
-    type: Number,
-    required: true,
-  },
-  height: {
-    type: Number,
-    required: true,
-  },
-  left: {
-    type: Number,
-    default: 10,
-  },
-  top: {
-    type: Number,
-    default: 10,
-  },
-  title: {
-    type: String,
-    default: '',
-  },
-  moveable: {
-    type: Boolean,
-    default: true,
-  },
+const props = withDefaults(defineProps<{
+  width: number
+  height: number
+  left?: number
+  top?: number
+  title?: string
+  moveable?: boolean
+}>(), {
+  left: 10,
+  top: 10,
+  title: '',
+  moveable: true,
 })
 
 const emit = defineEmits<{
@@ -61,13 +49,20 @@ const emit = defineEmits<{
 
 const x = ref(0)
 const y = ref(0)
+const moveablePanelRef = ref<HTMLElement>()
+const realHeight = computed(() => {
+  if (!props.height) {
+    return moveablePanelRef.value?.clientHeight || 0
+  }
+  return props.height
+})
 
 onMounted(() => {
   if (props.left >= 0) x.value = props.left
   else x.value = document.body.clientWidth + props.left - props.width
 
   if (props.top >= 0) y.value = props.top
-  else y.value = document.body.clientHeight + props.top - props.height
+  else y.value = document.body.clientHeight + props.top - realHeight.value
 })
 
 const startMove = (e: MouseEvent) => {
@@ -96,7 +91,7 @@ const startMove = (e: MouseEvent) => {
     if (left < 0) left = 0
     if (top < 0) top = 0
     if (left + props.width > windowWidth) left = windowWidth - props.width
-    if (top + props.height > clientHeight) top = clientHeight - props.height
+    if (top + realHeight.value > clientHeight) top = clientHeight - realHeight.value
 
     x.value = left
     y.value = top

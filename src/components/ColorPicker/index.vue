@@ -77,9 +77,10 @@
 
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import tinycolor, { ColorFormats } from 'tinycolor2'
+import tinycolor, { type ColorFormats } from 'tinycolor2'
 import { debounce } from 'lodash'
 import { toCanvas } from 'html-to-image'
+import message from '@/utils/message'
 
 import Alpha from './Alpha.vue'
 import Checkboard from './Checkboard.vue'
@@ -87,13 +88,10 @@ import Hue from './Hue.vue'
 import Saturation from './Saturation.vue'
 import EditableInput from './EditableInput.vue'
 
-import { message } from 'ant-design-vue'
-
-const props = defineProps({
-  modelValue: {
-    type: String,
-    default: '#e86b99',
-  },
+const props = withDefaults(defineProps<{
+  modelValue?: string
+}>(), {
+  modelValue: '#e86b99',
 })
 
 const emit = defineEmits<{

@@ -6,13 +6,13 @@ import pptxgen from 'pptxgenjs'
 import tinycolor from 'tinycolor2'
 import { toPng, toJpeg } from 'html-to-image'
 import { useSlidesStore } from '@/store'
-import { PPTElementOutline, PPTElementShadow, PPTElementLink, Slide } from '@/types/slides'
+import type { PPTElementOutline, PPTElementShadow, PPTElementLink, Slide } from '@/types/slides'
 import { getElementRange, getLineElementPath, getTableSubThemeColor } from '@/utils/element'
-import { AST, toAST } from '@/utils/htmlParser'
-import { SvgPoints, toPoints } from '@/utils/svgPathParser'
+import { type AST, toAST } from '@/utils/htmlParser'
+import { type SvgPoints, toPoints } from '@/utils/svgPathParser'
 import { encrypt } from '@/utils/crypto'
 import { svg2Base64 } from '@/utils/svg2Base64'
-import { message } from 'ant-design-vue'
+import message from '@/utils/message'
 
 const INCH_PX_RATIO = 100
 const PT_PX_RATIO = 0.75
@@ -25,7 +25,7 @@ interface ExportImageConfig {
 
 export default () => {
   const slidesStore = useSlidesStore()
-  const { slides, theme, viewportRatio } = storeToRefs(slidesStore)
+  const { slides, theme, viewportRatio, title } = storeToRefs(slidesStore)
 
   const exporting = ref(false)
 
@@ -47,7 +47,7 @@ export default () => {
 
       toImage(domRef, config).then(dataUrl => {
         exporting.value = false
-        saveAs(dataUrl, `pptist_slides.${format}`)
+        saveAs(dataUrl, `${title.value}.${format}`)
       }).catch(() => {
         exporting.value = false
         message.error('导出图片失败')
@@ -58,13 +58,13 @@ export default () => {
   // 导出pptist文件（特有 .pptist 后缀文件）
   const exportSpecificFile = (_slides: Slide[]) => {
     const blob = new Blob([encrypt(JSON.stringify(_slides))], { type: '' })
-    saveAs(blob, 'pptist_slides.pptist')
+    saveAs(blob, `${title.value}.pptist`)
   }
   
   // 导出JSON文件
   const exportJSON = () => {
     const blob = new Blob([JSON.stringify(slides.value)], { type: '' })
-    saveAs(blob, 'pptist_slides.json')
+    saveAs(blob, `${title.value}.json`)
   }
 
   // 格式化颜色值为 透明度 + HexString，供pptxgenjs使用
@@ -88,7 +88,7 @@ export default () => {
     let indent = 0
 
     const slices: pptxgen.TextProps[] = []
-    const parse = (obj: AST[], baseStyleObj = {}) => {
+    const parse = (obj: AST[], baseStyleObj: { [key: string]: string } = {}) => {
 
       for (const item of obj) {
         const isBlockTag = 'tagName' in item && ['div', 'li', 'p'].includes(item.tagName)
@@ -186,19 +186,19 @@ export default () => {
             if (styleObj['vertical-align'] === 'super') options.superscript = true
             if (styleObj['vertical-align'] === 'sub') options.subscript = true
           }
-          if (styleObj['text-align']) options.align = styleObj['text-align']
+          if (styleObj['text-align']) options.align = styleObj['text-align'] as pptxgen.HAlign
           if (styleObj['font-weight']) options.bold = styleObj['font-weight'] === 'bold'
           if (styleObj['font-style']) options.italic = styleObj['font-style'] === 'italic'
           if (styleObj['font-family']) options.fontFace = styleObj['font-family']
           if (styleObj['href']) options.hyperlink = { url: styleObj['href'] }
 
           if (bulletFlag && styleObj['list-type'] === 'ol') {
-            options.bullet = { type: 'number', indent: 20 * PT_PX_RATIO }
+            options.bullet = { type: 'number', indent: (options.fontSize || 20) * 1.25 }
             options.paraSpaceBefore = 0.1
             bulletFlag = false
           }
           if (bulletFlag && styleObj['list-type'] === 'ul') {
-            options.bullet = { indent: 20 * PT_PX_RATIO }
+            options.bullet = { indent: (options.fontSize || 20) * 1.25 }
             options.paraSpaceBefore = 0.1
             bulletFlag = false
           }
@@ -353,7 +353,7 @@ export default () => {
   }
 
   // 导出PPTX文件
-  const exportPPTX = (_slides: Slide[], masterOverwrite: boolean) => {
+  const exportPPTX = (_slides: Slide[], masterOverwrite: boolean, ignoreMedia: boolean) => {
     exporting.value = true
     const pptx = new pptxgen()
 
@@ -362,6 +362,10 @@ export default () => {
     else if (viewportRatio.value === 0.70710678) {
       pptx.defineLayout({ name: 'A3', width: 10, height: 7.0710678 })
       pptx.layout = 'A3'
+    }
+    else if (viewportRatio.value === 1.41421356) {
+      pptx.defineLayout({ name: 'A3_V', width: 10, height: 14.1421356 })
+      pptx.layout = 'A3_V'
     }
     else pptx.layout = 'LAYOUT_16x9'
 
@@ -743,11 +747,33 @@ export default () => {
 
           pptxSlide.addImage(options)
         }
+        
+        else if (!ignoreMedia && (el.type === 'video' || el.type === 'audio')) {
+          const options: pptxgen.MediaProps = {
+            x: el.left / INCH_PX_RATIO,
+            y: el.top / INCH_PX_RATIO,
+            w: el.width / INCH_PX_RATIO,
+            h: el.height / INCH_PX_RATIO,
+            path: el.src,
+            type: el.type,
+          }
+          if (el.type === 'video' && el.poster) options.cover = el.poster
+
+          const extMatch = el.src.match(/\.([a-zA-Z0-9]+)(?:[\?#]|$)/)
+          if (extMatch && extMatch[1]) options.extn = extMatch[1]
+          else if (el.ext) options.extn = el.ext
+          
+          const videoExts = ['avi', 'mp4', 'm4v', 'mov', 'wmv']
+          const audioExts = ['mp3', 'm4a', 'mp4', 'wav', 'wma']
+          if (options.extn && [...videoExts, ...audioExts].includes(options.extn)) {
+            pptxSlide.addMedia(options)
+          }
+        }
       }
     }
 
     setTimeout(() => {
-      pptx.writeFile({ fileName: `pptist.pptx` }).then(() => exporting.value = false).catch(() => {
+      pptx.writeFile({ fileName: `${title.value}.pptx` }).then(() => exporting.value = false).catch(() => {
         exporting.value = false
         message.error('导出失败')
       })

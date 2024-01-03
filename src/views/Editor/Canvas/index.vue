@@ -4,12 +4,17 @@
     ref="canvasRef"
     @wheel="$event => handleMousewheelCanvas($event)"
     @mousedown="$event => handleClickBlankArea($event)"
+    @dblclick="$event => handleDblClick($event)"
     v-contextmenu="contextmenus"
     v-click-outside="removeEditorAreaFocus"
   >
     <ElementCreateSelection
       v-if="creatingElement"
       @created="data => insertElementFromCreateSelection(data)"
+    />
+    <ShapeCreateCanvas
+      v-if="creatingCustomShape"
+      @created="data => insertCustomShape(data)"
     />
     <div 
       class="viewport-wrapper"
@@ -84,10 +89,7 @@
 
     <Modal
       v-model:visible="linkDialogVisible" 
-      :footer="null" 
-      centered
       :width="540"
-      destroyOnClose
     >
       <LinkDialog @close="linkDialogVisible = false" />
     </Modal>
@@ -99,9 +101,9 @@ import { nextTick, onMounted, onUnmounted, provide, ref, watch, watchEffect } fr
 import { throttle } from 'lodash'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore, useKeyboardStore } from '@/store'
-import { ContextmenuItem } from '@/components/Contextmenu/types'
-import { PPTElement } from '@/types/slides'
-import { AlignmentLineProps } from '@/types/edit'
+import type { ContextmenuItem } from '@/components/Contextmenu/types'
+import type { PPTElement, PPTShapeElement } from '@/types/slides'
+import type { AlignmentLineProps, CreateCustomShapeData } from '@/types/edit'
 import { injectKeySlideScale } from '@/types/injectKey'
 import { removeAllRanges } from '@/utils/selection'
 import { KEYS } from '@/configs/hotkey'
@@ -123,6 +125,7 @@ import useSelectAllElement from '@/hooks/useSelectAllElement'
 import useScaleCanvas from '@/hooks/useScaleCanvas'
 import useScreening from '@/hooks/useScreening'
 import useSlideHandler from '@/hooks/useSlideHandler'
+import useCreateElement from '@/hooks/useCreateElement'
 
 import EditableElement from './EditableElement.vue'
 import MouseSelection from './MouseSelection.vue'
@@ -130,10 +133,11 @@ import ViewportBackground from './ViewportBackground.vue'
 import AlignmentLine from './AlignmentLine.vue'
 import Ruler from './Ruler.vue'
 import ElementCreateSelection from './ElementCreateSelection.vue'
+import ShapeCreateCanvas from './ShapeCreateCanvas.vue'
 import MultiSelectOperate from './Operate/MultiSelectOperate.vue'
 import Operate from './Operate/index.vue'
 import LinkDialog from './LinkDialog.vue'
-import { Modal } from 'ant-design-vue'
+import Modal from '@/components/Modal.vue'
 
 const mainStore = useMainStore()
 const {
@@ -144,8 +148,8 @@ const {
   editorAreaFocus,
   gridLineSize,
   showRuler,
-  showSelectPanel,
   creatingElement,
+  creatingCustomShape,
   canvasScale,
   textFormatPainter,
 } = storeToRefs(mainStore)
@@ -179,7 +183,7 @@ const { dragElement } = useDragElement(elementList, alignmentLines, canvasScale)
 const { dragLineElement } = useDragLineElement(elementList)
 const { selectElement } = useSelectElement(elementList, dragElement)
 const { scaleElement, scaleMultiElement } = useScaleElement(elementList, alignmentLines, canvasScale)
-const { rotateElement } = useRotateElement(elementList, viewportRef)
+const { rotateElement } = useRotateElement(elementList, viewportRef, canvasScale)
 const { moveShapeKeypoint } = useMoveShapeKeypoint(elementList, canvasScale)
 
 const { selectAllElement } = useSelectAllElement()
@@ -187,6 +191,7 @@ const { deleteAllElements } = useDeleteElement()
 const { pasteElement } = useCopyAndPasteElement()
 const { enterScreeningFromStart } = useScreening()
 const { updateSlideIndex } = useSlideHandler()
+const { createTextElement, createShapeElement } = useCreateElement()
 
 // 组件渲染时，如果存在元素焦点，需要清除
 // 这种情况存在于：有焦点元素的情况下进入了放映模式，再退出时，需要清除原先的焦点（因为可能已经切换了页面）
@@ -206,6 +211,23 @@ const handleClickBlankArea = (e: MouseEvent) => {
   if (!editorAreaFocus.value) mainStore.setEditorareaFocus(true)
   if (textFormatPainter.value) mainStore.setTextFormatPainter(null)
   removeAllRanges()
+}
+
+// 双击空白处插入文本
+const handleDblClick = (e: MouseEvent) => {
+  if (activeElementIdList.value.length || creatingElement.value || creatingCustomShape.value) return
+  if (!viewportRef.value) return
+
+  const viewportRect = viewportRef.value.getBoundingClientRect()
+  const left = (e.pageX - viewportRect.x) / canvasScale.value
+  const top = (e.pageY - viewportRect.y) / canvasScale.value
+
+  createTextElement({
+    left,
+    top,
+    width: 200 / canvasScale.value, // 除以 canvasScale 是为了与点击选区创建的形式保持相同的宽度
+    height: 0,
+  })
 }
 
 // 画布注销时清空格式刷状态
@@ -244,7 +266,26 @@ const toggleRuler = () => {
 }
 
 // 在鼠标绘制的范围插入元素
-const { insertElementFromCreateSelection } = useInsertFromCreateSelection(viewportRef)
+const { insertElementFromCreateSelection, formatCreateSelection } = useInsertFromCreateSelection(viewportRef)
+
+// 插入自定义任意多边形
+const insertCustomShape = (data: CreateCustomShapeData) => {
+  const {
+    start,
+    end,
+    path,
+    viewBox,
+  } = data
+  const position = formatCreateSelection({ start, end })
+  if (position) {
+    const supplement: Partial<PPTShapeElement> = {}
+    if (data.fill) supplement.fill = data.fill
+    if (data.outline) supplement.outline = data.outline
+    createShapeElement(position, { path, viewBox }, supplement)
+  }
+
+  mainStore.setCreatingCustomShapeState(false)
+}
 
 const contextmenus = (): ContextmenuItem[] => {
   return [
@@ -288,13 +329,6 @@ const contextmenus = (): ContextmenuItem[] => {
           handler: () => mainStore.setGridLineSize(100),
         },
       ],
-    },
-    {
-      text: showSelectPanel.value ? '关闭选择面板' : '打开选择面板',
-      handler: () => {
-        if (!showSelectPanel.value) mainStore.setSelectPanelState(true)
-        else mainStore.setSelectPanelState(false)
-      },
     },
     {
       text: '重置当前页',

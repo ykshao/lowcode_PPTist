@@ -7,81 +7,85 @@
     <div class="shape-pool">
       <div class="category" v-for="item in SHAPE_LIST" :key="item.type">
         <div class="shape-list">
-          <ShapeItemThumbnail 
-            class="shape-item"
-            v-for="(shape, index) in item.children" 
-            :key="index" 
-            :shape="shape"
-            @click="changeShape(shape)"
-          />
+          <template v-for="(shape, index) in item.children">
+            <ShapeItemThumbnail 
+              class="shape-item"
+              :key="index"
+              :shape="shape"
+              @click="changeShape(shape)"
+              v-if="shape.title !== '任意多边形'"
+            />
+          </template>
         </div>
       </div>
     </div>
 
     <div class="row">
       <Select 
-        style="flex: 10;" 
+        style="flex: 1;" 
         :value="fillType" 
-        @change="value => updateFillType(value as 'fill' | 'gradient')"
-      >
-        <SelectOption value="fill">纯色填充</SelectOption>
-        <SelectOption value="gradient">渐变填充</SelectOption>
-      </Select>
-      <div style="flex: 1;"></div>
-      <Popover trigger="click" v-if="fillType === 'fill'">
+        @update:value="value => updateFillType(value as 'fill' | 'gradient')"
+        :options="[
+          { label: '纯色填充', value: 'fill' },
+          { label: '渐变填充', value: 'gradient' },
+        ]"
+      />
+      <div style="width: 10px;"></div>
+      <Popover trigger="click" v-if="fillType === 'fill'" style="flex: 1;">
         <template #content>
           <ColorPicker
             :modelValue="fill"
             @update:modelValue="value => updateFill(value)"
           />
         </template>
-        <ColorButton :color="fill" style="flex: 10;" />
+        <ColorButton :color="fill" />
       </Popover>
       <Select 
-        style="flex: 10;" 
+        style="flex: 1;" 
         :value="gradient.type" 
-        @change="value => updateGradient({ type: value as 'linear' | 'radial' })"
+        @update:value="value => updateGradient({ type: value as 'linear' | 'radial' })"
         v-else
-      >
-        <SelectOption value="linear">线性渐变</SelectOption>
-        <SelectOption value="radial">径向渐变</SelectOption>
-      </Select>
+        :options="[
+          { label: '线性渐变', value: 'linear' },
+          { label: '径向渐变', value: 'radial' },
+        ]"
+      />
     </div>
     
     <template v-if="fillType === 'gradient'">
       <div class="row">
-        <div style="flex: 2;">起点颜色：</div>
-        <Popover trigger="click">
+        <div style="width: 40%;">起点颜色：</div>
+        <Popover trigger="click" style="width: 60%;">
           <template #content>
             <ColorPicker
               :modelValue="gradient.color[0]"
               @update:modelValue="value => updateGradient({ color: [value, gradient.color[1]] })"
             />
           </template>
-          <ColorButton :color="gradient.color[0]" style="flex: 3;" />
+          <ColorButton :color="gradient.color[0]" />
         </Popover>
       </div>
       <div class="row">
-        <div style="flex: 2;">终点颜色：</div>
-        <Popover trigger="click">
+        <div style="width: 40%;">终点颜色：</div>
+        <Popover trigger="click" style="width: 60%;">
           <template #content>
             <ColorPicker
               :modelValue="gradient.color[1]"
               @update:modelValue="value => updateGradient({ color: [gradient.color[0], value] })"
             />
           </template>
-          <ColorButton :color="gradient.color[1]" style="flex: 3;" />
+          <ColorButton :color="gradient.color[1]" />
         </Popover>
       </div>
       <div class="row" v-if="gradient.type === 'linear'">
-        <div style="flex: 2;">渐变角度：</div>
+        <div style="width: 40%;">渐变角度：</div>
         <Slider
-          class="slider"
+          style="width: 60%;"
           :min="0"
           :max="360"
           :step="15"
           :value="gradient.rotate"
-          @change="value => updateGradient({ rotate: value as number })" 
+          @update:value="value => updateGradient({ rotate: value as number })" 
         />
       </div>
     </template>
@@ -91,126 +95,114 @@
     <Divider />
 
     <template v-if="handleShapeElement.text?.content">
-      <InputGroup compact class="row">
+      <SelectGroup class="row">
         <Select
           class="font-select"
-          style="flex: 3;"
+          style="width: 60%;"
           :value="richTextAttrs.fontname"
-          @change="value => emitRichTextCommand('fontname', value as string)"
+          @update:value="value => emitRichTextCommand('fontname', value as string)"
+          :options="[
+            ...availableFonts,
+            ...WEB_FONTS
+          ]"
         >
-          <template #suffixIcon><IconFontSize /></template>
-          <SelectOptGroup label="系统字体">
-            <SelectOption v-for="font in availableFonts" :key="font.value" :value="font.value">
-              <span :style="{ fontFamily: font.value }">{{font.label}}</span>
-            </SelectOption>
-          </SelectOptGroup>
-          <SelectOptGroup label="在线字体">
-            <SelectOption v-for="font in WEB_FONTS" :key="font.value" :value="font.value">
-              <span>{{font.label}}</span>
-            </SelectOption>
-          </SelectOptGroup>
+          <template #icon>
+            <IconFontSize />
+          </template>
         </Select>
         <Select
-          style="flex: 2;"
+          style="width: 40%;"
           :value="richTextAttrs.fontsize"
-          @change="value => emitRichTextCommand('fontsize', value as string)"
+          @update:value="value => emitRichTextCommand('fontsize', value as string)"
+          :options="fontSizeOptions.map(item => ({
+            label: item, value: item
+          }))"
         >
-          <template #suffixIcon><IconAddText /></template>
-          <SelectOption v-for="fontsize in fontSizeOptions" :key="fontsize" :value="fontsize">
-            {{fontsize}}
-          </SelectOption>
+          <template #icon>
+            <IconAddText />
+          </template>
         </Select>
-      </InputGroup>
+      </SelectGroup>
 
-      <ButtonGroup class="row">
-        <Popover trigger="click">
+      <ButtonGroup class="row" passive>
+        <Popover trigger="click" style="width: 30%;">
           <template #content>
             <ColorPicker
               :modelValue="richTextAttrs.color"
               @update:modelValue="value => emitRichTextCommand('color', value)"
             />
           </template>
-          <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="文字颜色">
-            <TextColorButton :color="richTextAttrs.color" style="flex: 3;">
-              <IconText />
-            </TextColorButton>
-          </Tooltip>
+          <TextColorButton first v-tooltip="'文字颜色'" :color="richTextAttrs.color">
+            <IconText />
+          </TextColorButton>
         </Popover>
-        <Popover trigger="click">
+        <Popover trigger="click" style="width: 30%;">
           <template #content>
             <ColorPicker
               :modelValue="richTextAttrs.backcolor"
               @update:modelValue="value => emitRichTextCommand('backcolor', value)"
             />
           </template>
-          <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="文字高亮">
-            <TextColorButton :color="richTextAttrs.backcolor" style="flex: 3;">
-              <IconHighLight />
-            </TextColorButton>
-          </Tooltip>
+          <TextColorButton v-tooltip="'文字高亮'" :color="richTextAttrs.backcolor">
+            <IconHighLight />
+          </TextColorButton>
         </Popover>
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="增大字号">
-          <Button 
-            class="font-size-btn"
-            style="flex: 2;"
-            @click="emitRichTextCommand('fontsize-add')"
-          ><IconFontSize />+</Button>
-        </Tooltip>
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="减小字号">
-          <Button 
-            class="font-size-btn"
-            style="flex: 2;"
-            @click="emitRichTextCommand('fontsize-reduce')"
-          ><IconFontSize />-</Button>
-        </Tooltip>
+        <Button 
+          class="font-size-btn"
+          style="width: 20%;"
+          v-tooltip="'增大字号'"
+          @click="emitRichTextCommand('fontsize-add')"
+        ><IconFontSize />+</Button>
+        <Button
+          last
+          class="font-size-btn"
+          style="width: 20%;"
+          v-tooltip="'减小字号'"
+          @click="emitRichTextCommand('fontsize-reduce')"
+        ><IconFontSize />-</Button>
       </ButtonGroup>
 
-      <CheckboxButtonGroup class="row">
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="加粗">
-          <CheckboxButton 
-            style="flex: 1;"
-            :checked="richTextAttrs.bold"
-            @click="emitRichTextCommand('bold')"
-          ><IconTextBold /></CheckboxButton>
-        </Tooltip>
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="斜体">
-          <CheckboxButton 
-            style="flex: 1;"
-            :checked="richTextAttrs.em"
-            @click="emitRichTextCommand('em')"
-          ><IconTextItalic /></CheckboxButton>
-        </Tooltip>
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="下划线">
-          <CheckboxButton 
-            style="flex: 1;"
-            :checked="richTextAttrs.underline"
-            @click="emitRichTextCommand('underline')"
-          ><IconTextUnderline /></CheckboxButton>
-        </Tooltip>
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="删除线">
-          <CheckboxButton 
-            style="flex: 1;"
-            :checked="richTextAttrs.strikethrough"
-            @click="emitRichTextCommand('strikethrough')"
-          ><IconStrikethrough /></CheckboxButton>
-        </Tooltip>
-      </CheckboxButtonGroup>
+      <ButtonGroup class="row">
+        <CheckboxButton 
+          style="flex: 1;"
+          :checked="richTextAttrs.bold"
+          v-tooltip="'加粗'"
+          @click="emitRichTextCommand('bold')"
+        ><IconTextBold /></CheckboxButton>
+        <CheckboxButton 
+          style="flex: 1;"
+          :checked="richTextAttrs.em"
+          v-tooltip="'斜体'"
+          @click="emitRichTextCommand('em')"
+        ><IconTextItalic /></CheckboxButton>
+        <CheckboxButton 
+          style="flex: 1;"
+          :checked="richTextAttrs.underline"
+          v-tooltip="'下划线'"
+          @click="emitRichTextCommand('underline')"
+        ><IconTextUnderline /></CheckboxButton>
+        <CheckboxButton 
+          style="flex: 1;"
+          :checked="richTextAttrs.strikethrough"
+          v-tooltip="'删除线'"
+          @click="emitRichTextCommand('strikethrough')"
+        ><IconStrikethrough /></CheckboxButton>
+      </ButtonGroup>
 
-      <CheckboxButtonGroup class="row">
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="清除格式">
-          <CheckboxButton
-            style="flex: 1;"
-            @click="emitRichTextCommand('clear')"
-          ><IconFormat /></CheckboxButton>
-        </Tooltip>
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="格式刷">
-          <CheckboxButton
-            style="flex: 1;"
-            :checked="!!textFormatPainter"
-            @click="toggleFormatPainter()"
-          ><IconFormatBrush /></CheckboxButton>
-        </Tooltip>
-      </CheckboxButtonGroup>
+      <ButtonGroup class="row">
+        <CheckboxButton
+          style="flex: 1;"
+          v-tooltip="'清除格式'"
+          @click="emitRichTextCommand('clear')"
+        ><IconFormat /></CheckboxButton>
+        <CheckboxButton
+          style="flex: 1;"
+          :checked="!!textFormatPainter"
+          v-tooltip="'格式刷（双击连续使用）'"
+          @click="toggleTextFormatPainter()"
+          @dblclick="toggleTextFormatPainter(true)"
+        ><IconFormatBrush /></CheckboxButton>
+      </ButtonGroup>
 
       <Divider  />
 
@@ -218,34 +210,22 @@
         class="row" 
         button-style="solid" 
         :value="richTextAttrs.align"
-        @change="e => emitRichTextCommand('align', e.target.value)"
+        @update:value="value => emitRichTextCommand('align', value)"
       >
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="左对齐">
-          <RadioButton value="left" style="flex: 1;"><IconAlignTextLeft /></RadioButton>
-        </Tooltip>
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="居中">
-          <RadioButton value="center" style="flex: 1;"><IconAlignTextCenter /></RadioButton>
-        </Tooltip>
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="右对齐">
-          <RadioButton value="right" style="flex: 1;"><IconAlignTextRight /></RadioButton>
-        </Tooltip>
+        <RadioButton value="left" v-tooltip="'左对齐'" style="flex: 1;"><IconAlignTextLeft /></RadioButton>
+        <RadioButton value="center" v-tooltip="'居中'" style="flex: 1;"><IconAlignTextCenter /></RadioButton>
+        <RadioButton value="right" v-tooltip="'右对齐'" style="flex: 1;"><IconAlignTextRight /></RadioButton>
       </RadioGroup>
 
       <RadioGroup 
         class="row" 
         button-style="solid" 
         :value="textAlign"
-        @change="e => updateTextAlign(e.target.value)"
+        @update:value="value => updateTextAlign(value as 'top' | 'middle' | 'bottom')"
       >
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="顶对齐">
-          <RadioButton value="top" style="flex: 1;"><IconAlignTextTopOne /></RadioButton>
-        </Tooltip>
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="居中">
-          <RadioButton value="middle" style="flex: 1;"><IconAlignTextMiddleOne /></RadioButton>
-        </Tooltip>
-        <Tooltip :mouseLeaveDelay="0" :mouseEnterDelay="0.5" title="底对齐">
-          <RadioButton value="bottom" style="flex: 1;"><IconAlignTextBottomOne /></RadioButton>
-        </Tooltip>
+        <RadioButton value="top" v-tooltip="'顶对齐'" style="flex: 1;"><IconAlignTextTopOne /></RadioButton>
+        <RadioButton value="middle" v-tooltip="'居中'" style="flex: 1;"><IconAlignTextMiddleOne /></RadioButton>
+        <RadioButton value="bottom" v-tooltip="'底对齐'" style="flex: 1;"><IconAlignTextBottomOne /></RadioButton>
       </RadioGroup>
 
       <Divider  />
@@ -256,19 +236,31 @@
     <ElementShadow />
     <Divider />
     <ElementOpacity />
+    <Divider />
+
+    <div class="row">
+      <CheckboxButton
+        v-tooltip="'双击连续使用'"
+        style="flex: 1;"
+        :checked="!!shapeFormatPainter"
+        @click="toggleShapeFormatPainter()"
+        @dblclick="toggleShapeFormatPainter(true)"
+      ><IconFormatBrush /> 形状格式刷</CheckboxButton>
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { Ref, ref, watch } from 'vue'
+import { type Ref, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
-import { PPTShapeElement, ShapeGradient, ShapeText } from '@/types/slides'
+import type { PPTShapeElement, ShapeGradient, ShapeText } from '@/types/slides'
 import { WEB_FONTS } from '@/configs/font'
-import { ShapePoolItem, SHAPE_LIST, SHAPE_PATH_FORMULAS } from '@/configs/shapes'
+import { type ShapePoolItem, SHAPE_LIST, SHAPE_PATH_FORMULAS } from '@/configs/shapes'
 import emitter, { EmitterEvents } from '@/utils/emitter'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 import useTextFormatPainter from '@/hooks/useTextFormatPainter'
+import useShapeFormatPainter from '@/hooks/useShapeFormatPainter'
 
 import ElementOpacity from '../common/ElementOpacity.vue'
 import ElementOutline from '../common/ElementOutline.vue'
@@ -276,28 +268,22 @@ import ElementShadow from '../common/ElementShadow.vue'
 import ElementFlip from '../common/ElementFlip.vue'
 import ColorButton from '../common/ColorButton.vue'
 import TextColorButton from '../common/TextColorButton.vue'
-import CheckboxButton from '@/components/CheckboxButton.vue'
-import CheckboxButtonGroup from '@/components/CheckboxButtonGroup.vue'
-import ColorPicker from '@/components/ColorPicker/index.vue'
 import ShapeItemThumbnail from '@/views/Editor/CanvasTool/ShapeItemThumbnail.vue'
-import {
-  Divider,
-  Button,
-  Tooltip,
-  Popover,
-  Slider,
-  Select,
-  Radio,
-  Input,
-} from 'ant-design-vue'
-const { Group: RadioGroup, Button: RadioButton } = Radio
-const { OptGroup: SelectOptGroup, Option: SelectOption } = Select
-const InputGroup = Input.Group
-const ButtonGroup = Button.Group
+import CheckboxButton from '@/components/CheckboxButton.vue'
+import ColorPicker from '@/components/ColorPicker/index.vue'
+import Divider from '@/components/Divider.vue'
+import Slider from '@/components/Slider.vue'
+import Button from '@/components/Button.vue'
+import ButtonGroup from '@/components/ButtonGroup.vue'
+import RadioButton from '@/components/RadioButton.vue'
+import RadioGroup from '@/components/RadioGroup.vue'
+import Select from '@/components/Select.vue'
+import SelectGroup from '@/components/SelectGroup.vue'
+import Popover from '@/components/Popover.vue'
 
 const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
-const { handleElement, handleElementId, richTextAttrs, availableFonts, textFormatPainter } = storeToRefs(mainStore)
+const { handleElement, handleElementId, richTextAttrs, availableFonts, textFormatPainter, shapeFormatPainter } = storeToRefs(mainStore)
 
 const handleShapeElement = handleElement as Ref<PPTShapeElement>
 
@@ -320,7 +306,8 @@ watch(handleElement, () => {
 }, { deep: true, immediate: true })
 
 const { addHistorySnapshot } = useHistorySnapshot()
-const { toggleFormatPainter } = useTextFormatPainter()
+const { toggleTextFormatPainter } = useTextFormatPainter()
+const { toggleShapeFormatPainter } = useShapeFormatPainter()
 
 const updateElement = (props: Partial<PPTShapeElement>) => {
   slidesStore.updateElement({ id: handleElementId.value, props })
@@ -408,14 +395,8 @@ const emitRichTextCommand = (command: string, value?: string) => {
   align-items: center;
   margin-bottom: 10px;
 }
-.font-select {
-  max-width: 50%;
-}
 .font-size-btn {
   padding: 0;
-}
-.slider {
-  flex: 3;
 }
 .title {
   display: flex;
@@ -424,7 +405,7 @@ const emitRichTextCommand = (command: string, value?: string) => {
 }
 .shape-pool {
   width: 235px;
-  height: 190px;
+  height: 150px;
   overflow: auto;
   padding: 5px;
   padding-right: 10px;

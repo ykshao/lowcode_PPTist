@@ -1,14 +1,15 @@
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { useSlidesStore, useMainStore } from '@/store'
-import { PPTElement, Slide } from '@/types/slides'
-import { createSlideIdMap, createElementIdMap } from '@/utils/element'
+import type { PPTElement, Slide } from '@/types/slides'
+import { createSlideIdMap, createElementIdMap, getElementRange } from '@/utils/element'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 export default () => {
   const mainStore = useMainStore()
   const slidesStore = useSlidesStore()
-  const { currentSlide } = storeToRefs(slidesStore)
+  const { currentSlide, slides } = storeToRefs(slidesStore)
 
   const { addHistorySnapshot } = useHistorySnapshot()
 
@@ -18,17 +19,39 @@ export default () => {
    */
   const addElementsFromData = (elements: PPTElement[]) => {
     const { groupIdMap, elIdMap } = createElementIdMap(elements)
-    const currentSlideElementIdList = currentSlide.value.elements.map(el => el.id)
+
+    const firstElement = elements[0]
+    let offset = 0
+    let lastSameElement: PPTElement | undefined
+    
+    do {
+      lastSameElement = currentSlide.value.elements.find(el => {
+        if (el.type !== firstElement.type) return false
+  
+        const { minX: oMinX, maxX: oMaxX, minY: oMinY, maxY: oMaxY } = getElementRange(el)
+        const { minX: nMinX, maxX: nMaxX, minY: nMinY, maxY: nMaxY } = getElementRange({
+          ...firstElement,
+          left: firstElement.left + offset,
+          top: firstElement.top + offset
+        })
+        if (
+          oMinX === nMinX &&
+          oMaxX === nMaxX &&
+          oMinY === nMinY &&
+          oMaxY === nMaxY
+        ) return true
+  
+        return false
+      })
+      if (lastSameElement) offset += 10
+
+    } while (lastSameElement)
     
     for (const element of elements) {
-      const inCurrentSlide = currentSlideElementIdList.includes(element.id)
-      
       element.id = elIdMap[element.id]
 
-      if (inCurrentSlide) {
-        element.left = element.left + 10
-        element.top = element.top + 10
-      }
+      element.left = element.left + offset
+      element.top = element.top + offset
 
       if (element.groupId) element.groupId = groupIdMap[element.groupId]
     }
@@ -77,8 +100,15 @@ export default () => {
     addHistorySnapshot()
   }
 
+  const isEmptySlide = computed(() => {
+    if (slides.value.length > 1) return false
+    if (slides.value[0].elements.length > 0) return false
+    return true
+  })
+
   return {
     addElementsFromData,
     addSlidesFromData,
+    isEmptySlide,
   }
 }

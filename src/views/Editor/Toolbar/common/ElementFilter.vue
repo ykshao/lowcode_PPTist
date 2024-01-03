@@ -4,8 +4,8 @@
       <div style="flex: 2;">启用滤镜：</div>
       <div class="switch-wrapper" style="flex: 3;">
         <Switch 
-          :checked="hasFilters" 
-          @change="checked => toggleFilters(checked as boolean)" 
+          :value="hasFilters" 
+          @update:value="value => toggleFilters(value)" 
         />
       </div>
     </div>
@@ -18,7 +18,7 @@
           :min="0"
           :step="filter.step"
           :value="filter.value"
-          @change="value => updateFilter(filter, value as number)"
+          @update:value="value => updateFilter(filter, value as number)"
         />
       </div>
     </div>
@@ -29,14 +29,15 @@
 import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
-import { PPTImageElement } from '@/types/slides'
+import type { ImageElementFilterKeys, PPTImageElement } from '@/types/slides'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
-import { Slider, Switch } from 'ant-design-vue'
+import Switch from '@/components/Switch.vue'
+import Slider from '@/components/Slider.vue'
 
 interface FilterOption {
   label: string
-  key: string
+  key: ImageElementFilterKeys
   default: number
   value: number
   unit: string
@@ -68,7 +69,8 @@ watch(handleElement, () => {
   const filters = handleElement.value.filters
   if (filters) {
     filterOptions.value = defaultFilters.map(item => {
-      if (filters[item.key] !== undefined) return { ...item, value: parseInt(filters[item.key]) }
+      const filterItem = filters[item.key]
+      if (filterItem) return { ...item, value: parseInt(filterItem) }
       return item
     })
     hasFilters.value = true
@@ -115,7 +117,7 @@ const toggleFilters = (checked: boolean) => {
   font-size: 12px;
 }
 .filter-item {
-  padding: 8px 0;
+  padding: 6px 0;
   display: flex;
   justify-content: center;
   align-items: center;

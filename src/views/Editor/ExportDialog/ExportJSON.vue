@@ -15,8 +15,7 @@
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
 import useExport from '@/hooks/useExport'
-
-import { Button } from 'ant-design-vue'
+import Button from '@/components/Button.vue'
 
 const emit = defineEmits<{
   (event: 'close'): void
@@ -39,11 +38,12 @@ const { exportJSON } = useExport()
 .preview {
   width: 100%;
   height: calc(100% - 100px);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
   background-color: #f9f9f9;
   color: #0451a5;
+  overflow: auto;
+}
+pre {
+  font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace;
 }
 .btns {
   width: 300px;

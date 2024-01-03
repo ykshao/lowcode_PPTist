@@ -1,6 +1,6 @@
 // https://iconpark.bytedance.com/official
 
-import { App } from 'vue'
+import type { App } from 'vue'
 import {
   PlayOne,
   FullScreenPlay,
@@ -12,7 +12,6 @@ import {
   FullScreen,
   List,
   OrderedList,
-  Helpcenter,
   FlipVertically,
   FlipHorizontally,
   FontSize,
@@ -40,6 +39,7 @@ import {
   AlignTextLeft,
   AlignTextRight,
   AlignTextCenter,
+  AlignTextBoth,
   RowHeight,
   Write,
   InsertTable,
@@ -80,7 +80,6 @@ import {
   Logout,
   Erase,
   Clear,
-  FolderClose,
   AlignTextTopOne,
   AlignTextBottomOne,
   AlignTextMiddleOne,
@@ -97,7 +96,7 @@ import {
   ListView,
   Magic,
   HighLight,
-  Share,
+  Download,
   IndentLeft,
   IndentRight,
   VerticalSpacingBetweenItems,
@@ -112,9 +111,22 @@ import {
   PreviewOpen,
   PreviewClose,
   StopwatchStart,
+  Search,
+  Left,
+  Right,
+  MoveOne,
+  HamburgerButton,
+  Attention,
+  CheckOne,
+  CloseOne,
+  Info,
 } from '@icon-park/vue-next'
 
-export const icons = {
+export interface Icons {
+  [key: string]: typeof PlayOne
+}
+
+export const icons: Icons = {
   IconPlayOne: PlayOne,
   IconFullScreenPlay: FullScreenPlay,
   IconLock: Lock,
@@ -125,7 +137,6 @@ export const icons = {
   IconFullScreen: FullScreen,
   IconList: List,
   IconOrderedList: OrderedList,
-  IconHelpcenter: Helpcenter,
   IconFlipVertically: FlipVertically,
   IconFlipHorizontally: FlipHorizontally,
   IconFontSize: FontSize,
@@ -153,6 +164,7 @@ export const icons = {
   IconAlignTextLeft: AlignTextLeft,
   IconAlignTextRight: AlignTextRight,
   IconAlignTextCenter: AlignTextCenter,
+  IconAlignTextBoth: AlignTextBoth,
   IconRowHeight: RowHeight,
   IconWrite: Write,
   IconInsertTable: InsertTable,
@@ -193,7 +205,6 @@ export const icons = {
   IconLogout: Logout,
   IconErase: Erase,
   IconClear: Clear,
-  IconFolderClose: FolderClose,
   IconAlignTextTopOne: AlignTextTopOne,
   IconAlignTextBottomOne: AlignTextBottomOne,
   IconAlignTextMiddleOne: AlignTextMiddleOne,
@@ -210,7 +221,7 @@ export const icons = {
   IconListView: ListView,
   IconMagic: Magic,
   IconHighLight: HighLight,
-  IconShare: Share,
+  IconDownload: Download,
   IconIndentLeft: IndentLeft,
   IconIndentRight: IndentRight,
   IconVerticalSpacingBetweenItems: VerticalSpacingBetweenItems,
@@ -225,6 +236,15 @@ export const icons = {
   IconPreviewOpen: PreviewOpen,
   IconPreviewClose: PreviewClose,
   IconStopwatchStart: StopwatchStart,
+  IconSearch: Search,
+  IconLeft: Left,
+  IconRight: Right,
+  IconMoveOne: MoveOne,
+  IconHamburgerButton: HamburgerButton,
+  IconAttention: Attention,
+  IconCheckOne: CheckOne,
+  IconCloseOne: CloseOne,
+  IconInfo: Info,
 }
 
 export default {

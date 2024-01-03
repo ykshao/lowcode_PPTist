@@ -1,4 +1,4 @@
-import { BarChartOptions, LineChartOptions, PieChartOptions } from 'chartist'
+import type { BarChartOptions, LineChartOptions, PieChartOptions } from 'chartist'
 
 export const enum ShapePathFormulasKeys {
   ROUND_RECT = 'roundRect',
@@ -140,8 +140,6 @@ interface PPTBaseElement {
  * 
  * shadow?: 阴影
  * 
- * textIndent?: 段落首行缩进
- * 
  * paragraphSpace?: 段间距，默认 5px
  * 
  * vertical?: 竖向文本
@@ -157,7 +155,6 @@ export interface PPTTextElement extends PPTBaseElement {
   wordSpace?: number
   opacity?: number
   shadow?: PPTElementShadow
-  textIndent?: number
   paragraphSpace?: number
   vertical?: boolean
 }
@@ -194,6 +191,7 @@ export interface ImageOrShapeFlip {
  * 
  * 'opacity'?: 不透明度，默认100（%）
  */
+export type ImageElementFilterKeys = 'blur' | 'brightness' | 'contrast' | 'grayscale' | 'saturate' | 'hue-rotate' | 'opacity'
 export interface ImageElementFilters {
   'blur'?: string
   'brightness'?: string
@@ -216,18 +214,6 @@ export type ImageClipDataRange = [[number, number], [number, number]]
 export interface ImageElementClip {
   range: ImageClipDataRange
   shape: string
-}
-
-/**
- * 图片蒙版
- * 
- * color: 蒙版颜色
- * 
- * opacity: 蒙版透明度
- */
-export interface ImageColorElementMask {
-  color: string
-  opacity: number
 }
 
 /**
@@ -261,7 +247,7 @@ export interface PPTImageElement extends PPTBaseElement {
   flipH?: boolean
   flipV?: boolean
   shadow?: PPTElementShadow
-  colorMask?: ImageColorElementMask
+  colorMask?: string
 }
 
 
@@ -280,6 +266,8 @@ export interface ShapeGradient {
   rotate: number
 }
 
+export type ShapeTextAlign = 'top' | 'middle' | 'bottom' 
+
 /**
  * 形状内文本
  * 
@@ -295,7 +283,7 @@ export interface ShapeText {
   content: string
   defaultFontName: string
   defaultColor: string
-  align: 'top' | 'middle' | 'bottom'
+  align: ShapeTextAlign
 }
 
 /**
@@ -569,12 +557,18 @@ export interface PPTLatexElement extends PPTBaseElement {
  * 
  * src: 视频地址
  * 
+ * autoplay: 自动播放
+ * 
  * poster: 预览封面
+ * 
+ * ext: 视频后缀，当资源链接缺少后缀时用该字段确认资源类型
  */
 export interface PPTVideoElement extends PPTBaseElement {
   type: 'video'
   src: string
+  autoplay: boolean
   poster?: string
+  ext?: string
 }
 
 /**
@@ -591,14 +585,17 @@ export interface PPTVideoElement extends PPTBaseElement {
  * autoplay: 自动播放
  * 
  * src: 音频地址
+ * 
+ * ext: 音频后缀，当资源链接缺少后缀时用该字段确认资源类型
  */
 export interface PPTAudioElement extends PPTBaseElement {
   type: 'audio'
   fixedRatio: boolean
-  color: string,
-  loop: boolean,
-  autoplay: boolean,
+  color: string
+  loop: boolean
+  autoplay: boolean
   src: string
+  ext?: string
 }
 
 
@@ -657,7 +654,7 @@ export interface SlideBackground {
 }
 
 
-export type TurningMode = 'no' | 'fade' | 'slideX' | 'slideY'
+export type TurningMode = 'no' | 'fade' | 'slideX' | 'slideY' | 'random' | 'slideX3D' | 'slideY3D' | 'rotate' | 'scaleY' | 'scaleX' | 'scale' | 'scaleReverse'
 
 /**
  * 幻灯片页面
@@ -699,4 +696,6 @@ export interface SlideTheme {
   themeColor: string
   fontColor: string
   fontName: string
+  outline: PPTElementOutline
+  shadow: PPTElementShadow
 }

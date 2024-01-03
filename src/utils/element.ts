@@ -1,6 +1,6 @@
 import tinycolor from 'tinycolor2'
 import { nanoid } from 'nanoid'
-import { PPTElement, PPTLineElement, Slide } from '@/types/slides'
+import type { PPTElement, PPTLineElement, Slide } from '@/types/slides'
 
 interface RotatedElementData {
   left: number
@@ -8,6 +8,10 @@ interface RotatedElementData {
   width: number
   height: number
   rotate: number
+}
+
+interface IdMap {
+  [id: string]: string
 }
 
 /**
@@ -158,7 +162,7 @@ export const uniqAlignLines = (lines: AlignLine[]) => {
  * @param slides 页面列表
  */
 export const createSlideIdMap = (slides: Slide[]) => {
-  const slideIdMap = {}
+  const slideIdMap: IdMap = {}
   for (const slide of slides) {
     slideIdMap[slide.id] = nanoid(10)
   }
@@ -172,8 +176,8 @@ export const createSlideIdMap = (slides: Slide[]) => {
    * @param elements 元素列表数据
    */
 export const createElementIdMap = (elements: PPTElement[]) => {
-  const groupIdMap = {}
-  const elIdMap = {}
+  const groupIdMap: IdMap = {}
+  const elIdMap: IdMap = {}
   for (const element of elements) {
     const groupId = element.groupId
     if (groupId && !groupIdMap[groupId]) {
@@ -221,4 +225,19 @@ export const getLineElementPath = (element: PPTLineElement) => {
     return `M${start} C${p1} ${p2} ${end}`
   }
   return `M${start} L${end}`
+}
+
+/**
+ * 判断一个元素是否在可视范围内
+ * @param element 元素
+ * @param parent 父元素
+ */
+export const isElementInViewport = (element: HTMLElement, parent: HTMLElement): boolean => {
+  const elementRect = element.getBoundingClientRect()
+  const parentRect = parent.getBoundingClientRect()
+
+  return (
+    elementRect.top >= parentRect.top &&
+    elementRect.bottom <= parentRect.bottom
+  )
 }

@@ -8,15 +8,12 @@
 </template>
 
 <script lang="ts" setup>
-defineProps({
-  loading: {
-    type: Boolean,
-    default: false,
-  },
-  tip: {
-    type: String,
-    default: '',
-  },
+withDefaults(defineProps<{
+  loading?: boolean
+  tip?: string
+}>(), {
+  loading: false,
+  tip: '',
 })
 </script>
 
@@ -49,14 +46,14 @@ defineProps({
 .spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid #d14424;
+  border: 3px solid $themeColor;
   border-top-color: transparent;
   border-radius: 50%;
   animation: spinner .8s linear infinite;
 }
 .text {
   margin-top: 20px;
-  color: #d14424;
+  color: $themeColor;
 }
 @keyframes spinner {
   0% {

@@ -34,7 +34,9 @@
         />
         <div 
           class="text ProseMirror-static" 
-          :style="cssVar"
+          :style="{
+            '--paragraphSpace': `${elementInfo.paragraphSpace === undefined ? 5 : elementInfo.paragraphSpace}px`,
+          }"
           v-html="elementInfo.content"
         ></div>
       </div>
@@ -43,26 +45,18 @@
 </template>
 
 <script lang="ts" setup>
-import { PropType, computed, StyleValue } from 'vue'
-import { PPTTextElement } from '@/types/slides'
+import { computed } from 'vue'
+import type { PPTTextElement } from '@/types/slides'
 import ElementOutline from '@/views/components/element/ElementOutline.vue'
 
 import useElementShadow from '@/views/components/element/hooks/useElementShadow'
 
-const props = defineProps({
-  elementInfo: {
-    type: Object as PropType<PPTTextElement>,
-    required: true,
-  },
-})
+const props = defineProps<{
+  elementInfo: PPTTextElement
+}>()
 
 const shadow = computed(() => props.elementInfo.shadow)
 const { shadowStyle } = useElementShadow(shadow)
-
-const cssVar = computed(() => ({
-  '--textIndent': `${props.elementInfo.textIndent || 0}px`,
-  '--paragraphSpace': `${props.elementInfo.paragraphSpace === undefined ? 5 : props.elementInfo.paragraphSpace}px`,
-} as StyleValue))
 </script>
 
 <style lang="scss" scoped>

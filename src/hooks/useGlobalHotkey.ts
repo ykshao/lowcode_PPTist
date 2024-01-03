@@ -26,6 +26,7 @@ export default () => {
     handleElementId,
     editorAreaFocus,
     thumbnailsFocus,
+    showSearchPanel,
   } = storeToRefs(mainStore)
   const { currentSlide } = storeToRefs(useSlidesStore())
   const { ctrlKeyState, shiftKeyState, spaceKeyState } = storeToRefs(keyboardStore)
@@ -149,6 +150,11 @@ export default () => {
     if (key === KEYS.F5) {
       e.preventDefault()
       enterScreeningFromStart()
+      return
+    }
+    if (ctrlKey && key === KEYS.F) {
+      e.preventDefault()
+      mainStore.setSearchPanelState(!showSearchPanel.value)
       return
     }
     

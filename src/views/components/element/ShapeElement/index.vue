@@ -1,7 +1,10 @@
 <template>
   <div 
     class="editable-element-shape"
-    :class="{ 'lock': elementInfo.lock }"
+    :class="{
+      'lock': elementInfo.lock,
+      'format-painter': shapeFormatPainter,
+    }"
     :style="{
       top: elementInfo.top + 'px',
       left: elementInfo.left + 'px',
@@ -24,6 +27,7 @@
         }"
         v-contextmenu="contextmenus"
         @mousedown="$event => handleSelectElement($event)"
+        @mouseup="execFormatPainter()"
         @touchstart="$event => handleSelectElement($event)"
         @dblclick="startEdit()"
       >
@@ -53,7 +57,7 @@
               :fill="elementInfo.gradient ? `url(#editabel-gradient-${elementInfo.id})` : elementInfo.fill"
               :stroke="outlineColor"
               :stroke-width="outlineWidth" 
-              :stroke-dasharray="outlineStyle === 'dashed' ? '10 6' : '0 0'" 
+              :stroke-dasharray="strokeDashArray" 
             ></path>
           </g>
         </svg>
@@ -78,11 +82,11 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, PropType, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
-import { PPTShapeElement, ShapeText } from '@/types/slides'
-import { ContextmenuItem } from '@/components/Contextmenu/types'
+import type { PPTShapeElement, ShapeText } from '@/types/slides'
+import type { ContextmenuItem } from '@/components/Contextmenu/types'
 import useElementOutline from '@/views/components/element/hooks/useElementOutline'
 import useElementShadow from '@/views/components/element/hooks/useElementShadow'
 import useElementFlip from '@/views/components/element/hooks/useElementFlip'
@@ -91,23 +95,15 @@ import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 import GradientDefs from './GradientDefs.vue'
 import ProsemirrorEditor from '@/views/components/element/ProsemirrorEditor.vue'
 
-const props = defineProps({
-  elementInfo: {
-    type: Object as PropType<PPTShapeElement>,
-    required: true,
-  },
-  selectElement: {
-    type: Function as PropType<(e: MouseEvent | TouchEvent, element: PPTShapeElement, canMove?: boolean) => void>,
-    required: true,
-  },
-  contextmenus: {
-    type: Function as PropType<() => ContextmenuItem[] | null>,
-  },
-})
+const props = defineProps<{
+  elementInfo: PPTShapeElement
+  selectElement: (e: MouseEvent | TouchEvent, element: PPTShapeElement, canMove?: boolean) => void
+  contextmenus: () => ContextmenuItem[] | null
+}>()
 
 const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
-const { handleElementId } = storeToRefs(mainStore)
+const { handleElementId, shapeFormatPainter } = storeToRefs(mainStore)
 
 const { addHistorySnapshot } = useHistorySnapshot()
 
@@ -118,8 +114,21 @@ const handleSelectElement = (e: MouseEvent | TouchEvent, canMove = true) => {
   props.selectElement(e, props.elementInfo, canMove)
 }
 
+const execFormatPainter = () => {
+  if (!shapeFormatPainter.value) return
+  const { keep, ...newProps } = shapeFormatPainter.value
+
+  slidesStore.updateElement({
+    id: props.elementInfo.id, 
+    props: newProps,
+  })
+  
+  addHistorySnapshot()
+  if (!keep) mainStore.setShapeFormatPainter(null)
+}
+
 const outline = computed(() => props.elementInfo.outline)
-const { outlineWidth, outlineStyle, outlineColor } = useElementOutline(outline)
+const { outlineWidth, outlineColor, strokeDashArray } = useElementOutline(outline)
 
 const shadow = computed(() => props.elementInfo.shadow)
 const { shadowStyle } = useElementShadow(shadow)
@@ -168,7 +177,7 @@ const checkEmptyText = () => {
   }
 }
 
-const prosemirrorEditorRef = ref<typeof ProsemirrorEditor>()
+const prosemirrorEditorRef = ref<InstanceType<typeof ProsemirrorEditor>>()
 const startEdit = () => {
   editable.value = true
   nextTick(() => prosemirrorEditorRef.value && prosemirrorEditorRef.value.focus())
@@ -182,6 +191,9 @@ const startEdit = () => {
 
   &.lock .element-content {
     cursor: default;
+  }
+  &.format-painter .element-content {
+    cursor: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzQiIGhlaWdodD0iMTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTIuNzUgMTMuNzY0VjEuNDIxYS4zLjMgMCAwMS40NDgtLjI2bDEwLjkxIDYuMTk3YS4zLjMgMCAwMS0uMTE2LjU1OWwtNC4xOTYuNDQyIDIuNTgyIDQuNDcyYS4zLjMgMCAwMS0uMTEuNDFsLTMuMTg0IDEuODM4YS4zLjMgMCAwMS0uNDEtLjExbC0yLjU4MS00LjQ3Mi0yLjgxIDMuNDU2YS4zLjMgMCAwMS0uNTMzLS4xODl6IiBmaWxsPSIjZmZmIiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMjYgMTQuNWw0LjUtNC41LTYtNmMtMiAyLTMgMi01LjUgMi41LjQgMy4yIDQuODMzIDYuNjY3IDcgOHptNC41ODgtNC40OTRhLjMuMyAwIDAwLjQyNCAwbC42OC0uNjhhMS41IDEuNSAwIDAwMC0yLjEyMUwzMC4zNCA1Ljg1MmwyLjAyNi0xLjU4MmExLjYyOSAxLjYyOSAwIDEwLTIuMjgtMi4yOTZsLTEuNjAzIDIuMDIxLTEuMzU3LTEuMzU2YTEuNSAxLjUgMCAwMC0yLjEyIDBsLS42ODEuNjhhLjMuMyAwIDAwMCAuNDI0bDYuMjYzIDYuMjYzeiIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik0yNC41NDMgMy45NjFzLTEuMDMgMS4yMDItMi40OTQgMS44OTFjLTEuMDA2LjQ3NC0yLjE4MS41ODUtMi43MzQuNjI3LS4yLjAxNC0uMzQ0LjIwOS0uMjc3LjM5OC4yOTMuODIgMS4xMTIgMi44MDEgMi42NTggNC4zNDcgMi4xMjYgMi4xMjYgMy42NTkgMi45NjggNC4xNDIgMy4yMDIuMS4wNDguMjE1LjAzLjI5OS0uMDQxLjM4NS0uMzI2IDEuNS0xLjI3NyAyLjIxLTEuOTg2Ljg5MS0uODkgMi4xODYtMi40NDggMi4xODYtMi40NDhtLjQ4LjA1NWEuMy4zIDAgMDEtLjQyNSAwbC02LjI2My02LjI2M2EuMy4zIDAgMDEwLS40MjRsLjY4LS42OGExLjUgMS41IDAgMDEyLjEyMiAwbDEuMzU2IDEuMzU2IDEuNjA0LTIuMDIxYTEuNjI5IDEuNjI5IDAgMTEyLjI3OSAyLjI5NkwzMC4zNCA1Ljg1MmwxLjM1MyAxLjM1M2ExLjUgMS41IDAgMDEwIDIuMTIxbC0uNjguNjh6IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=) 2 5, default !important;
   }
 }
 .rotate-wrapper {

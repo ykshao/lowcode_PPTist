@@ -1,60 +1,63 @@
 <template>
   <div class="line-style-panel">
     <div class="row">
-      <div style="flex: 2;">线条样式：</div>
+      <div style="width: 40%;">线条样式：</div>
       <Select 
-        style="flex: 3;" 
+        style="width: 60%;" 
         :value="handleLineElement.style" 
-        @change="value => updateLine({ style: value as 'solid' | 'dashed' })"
-      >
-        <SelectOption value="solid">实线</SelectOption>
-        <SelectOption value="dashed">虚线</SelectOption>
-      </Select>
+        @update:value="value => updateLine({ style: value as 'solid' | 'dashed' })"
+        :options="[
+          { label: '实线', value: 'solid' },
+          { label: '虚线', value: 'dashed' },
+        ]"
+      />
     </div>
     <div class="row">
-      <div style="flex: 2;">线条颜色：</div>
-      <Popover trigger="click">
+      <div style="width: 40%;">线条颜色：</div>
+      <Popover trigger="click" style="width: 60%;">
         <template #content>
           <ColorPicker
             :modelValue="handleLineElement.color"
             @update:modelValue="value => updateLine({ color: value })"
           />
         </template>
-        <ColorButton :color="handleLineElement.color" style="flex: 3;" />
+        <ColorButton :color="handleLineElement.color" />
       </Popover>
     </div>
     <div class="row">
-      <div style="flex: 2;">线条宽度：</div>
-      <InputNumber 
+      <div style="width: 40%;">线条宽度：</div>
+      <NumberInput 
         :value="handleLineElement.width" 
-        @change="value => updateLine({ width: value as number })" 
-        style="flex: 3;" 
+        @update:value="value => updateLine({ width: value })" 
+        style="width: 60%;" 
       />
     </div>
     
     <div class="row">
-      <div style="flex: 2;">起点样式：</div>
+      <div style="width: 40%;">起点样式：</div>
       <Select 
-        style="flex: 3;" 
+        style="width: 60%;" 
         :value="handleLineElement.points[0]" 
-        @change="value => updateLine({ points: [value as 'arrow' | 'dot', handleLineElement.points[1]] })"
-      >
-        <SelectOption value="">无</SelectOption>
-        <SelectOption value="arrow">箭头</SelectOption>
-        <SelectOption value="dot">圆点</SelectOption>
-      </Select>
+        @update:value="value => updateLine({ points: [value as 'arrow' | 'dot', handleLineElement.points[1]] })"
+        :options="[
+          { label: '无', value: '' },
+          { label: '箭头', value: 'arrow' },
+          { label: '圆点', value: 'dot' },
+        ]"
+      />
     </div>
     <div class="row">
-      <div style="flex: 2;">终点样式：</div>
+      <div style="width: 40%;">终点样式：</div>
       <Select 
-        style="flex: 3;" 
+        style="width: 60%;" 
         :value="handleLineElement.points[1]" 
-        @change="value => updateLine({ points: [handleLineElement.points[0], value as 'arrow' | 'dot'] })"
-      >
-        <SelectOption value="">无</SelectOption>
-        <SelectOption value="arrow">箭头</SelectOption>
-        <SelectOption value="dot">圆点</SelectOption>
-      </Select>
+        @update:value="value => updateLine({ points: [handleLineElement.points[0], value as 'arrow' | 'dot'] })"
+        :options="[
+          { label: '无', value: '' },
+          { label: '箭头', value: 'arrow' },
+          { label: '圆点', value: 'dot' },
+        ]"
+      />
     </div>
 
     <Divider />
@@ -63,22 +66,19 @@
 </template>
 
 <script lang="ts" setup>
-import { Ref } from 'vue'
+import type { Ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
-import { PPTLineElement } from '@/types/slides'
+import type { PPTLineElement } from '@/types/slides'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 import ElementShadow from '../common/ElementShadow.vue'
 import ColorButton from '../common/ColorButton.vue'
 import ColorPicker from '@/components/ColorPicker/index.vue'
-import {
-  InputNumber,
-  Divider,
-  Popover,
-  Select,
-} from 'ant-design-vue'
-const SelectOption = Select.Option
+import Divider from '@/components/Divider.vue'
+import NumberInput from '@/components/NumberInput.vue'
+import Select from '@/components/Select.vue'
+import Popover from '@/components/Popover.vue'
 
 const slidesStore = useSlidesStore()
 const { handleElement } = storeToRefs(useMainStore())

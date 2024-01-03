@@ -20,9 +20,10 @@
             :isSelected="activeElementIdList.includes(element.id)"
             :canvasScale="canvasScale"
             :scaleElement="scaleElement"
+            :rotateElement="rotateElement"
           />
         </template>
-        <div class="viewport" :style="{ transform: `scale(${canvasScale})` }">
+        <div class="viewport" ref="viewportRef" :style="{ transform: `scale(${canvasScale})` }">
           <MobileEditableElement 
             v-for="(element, index) in elementList" 
             :key="element.id"
@@ -40,16 +41,17 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, PropType, ref, watchEffect } from 'vue'
+import { computed, onMounted, ref, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
-import { PPTElement } from '@/types/slides'
-import { AlignmentLineProps } from '@/types/edit'
-import { Mode } from '@/types/mobile'
+import type { PPTElement } from '@/types/slides'
+import type { AlignmentLineProps } from '@/types/edit'
+import type { Mode } from '@/types/mobile'
 import { VIEWPORT_SIZE } from '@/configs/canvas'
 import useSlideBackgroundStyle from '@/hooks/useSlideBackgroundStyle'
 import useDragElement from '@/views/Editor/Canvas/hooks/useDragElement'
 import useScaleElement from '@/views/Editor/Canvas/hooks/useScaleElement'
+import useRotateElement from '@/views/Editor/Canvas/hooks/useRotateElement'
 
 import AlignmentLine from '@/views/Editor/Canvas/AlignmentLine.vue'
 import MobileEditableElement from './MobileEditableElement.vue'
@@ -58,12 +60,9 @@ import SlideToolbar from './SlideToolbar.vue'
 import ElementToolbar from './ElementToolbar.vue'
 import Header from './Header.vue'
 
-defineProps({
-  changeMode: {
-    type: Function as PropType<(mode: Mode) => void>,
-    required: true,
-  },
-})
+defineProps<{
+  changeMode: (mode: Mode) => void
+}>()
 
 const slidesStore = useSlidesStore()
 const mainStore = useMainStore()
@@ -71,6 +70,7 @@ const { slideIndex, currentSlide, viewportRatio } = storeToRefs(slidesStore)
 const { activeElementIdList, handleElement } = storeToRefs(mainStore)
 
 const contentRef = ref<HTMLElement>()
+const viewportRef = ref<HTMLElement>()
 
 const alignmentLines = ref<AlignmentLineProps[]>([])
 
@@ -105,6 +105,7 @@ watchEffect(setLocalElementList)
 
 const { dragElement } = useDragElement(elementList, alignmentLines, canvasScale)
 const { scaleElement } = useScaleElement(elementList, alignmentLines, canvasScale)
+const { rotateElement } = useRotateElement(elementList, viewportRef, canvasScale)
 
 const selectElement = (e: TouchEvent, element: PPTElement, startMove = true) => {
   if (!activeElementIdList.value.includes(element.id)) {

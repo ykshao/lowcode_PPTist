@@ -20,7 +20,7 @@
       <RotateHandler
         class="operate-rotate-handler" 
         :style="{ left: scaleWidth / 2 + 'px' }"
-        @mousedown.stop="rotateElement(elementInfo)"
+        @mousedown.stop="$event => rotateElement($event, elementInfo)"
       />
       <div 
         class="operate-keypoint-handler" 
@@ -39,11 +39,11 @@ export default {
 </script>
 
 <script lang="ts" setup>
-import { computed, PropType } from 'vue'
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore } from '@/store'
-import { PPTShapeElement } from '@/types/slides'
-import { OperateResizeHandlers } from '@/types/edit'
+import type { PPTShapeElement } from '@/types/slides'
+import type { OperateResizeHandlers } from '@/types/edit'
 import { SHAPE_PATH_FORMULAS } from '@/configs/shapes'
 import useCommonOperate from '../hooks/useCommonOperate'
 
@@ -51,28 +51,13 @@ import RotateHandler from './RotateHandler.vue'
 import ResizeHandler from './ResizeHandler.vue'
 import BorderLine from './BorderLine.vue'
 
-const props = defineProps({
-  elementInfo: {
-    type: Object as PropType<PPTShapeElement>,
-    required: true,
-  },
-  handlerVisible: {
-    type: Boolean,
-    required: true,
-  },
-  rotateElement: {
-    type: Function as PropType<(element: PPTShapeElement) => void>,
-    required: true,
-  },
-  scaleElement: {
-    type: Function as PropType<(e: MouseEvent, element: PPTShapeElement, command: OperateResizeHandlers) => void>,
-    required: true,
-  },
-  moveShapeKeypoint: {
-    type: Function as PropType<(e: MouseEvent, element: PPTShapeElement) => void>,
-    required: true,
-  },
-})
+const props = defineProps<{
+  elementInfo: PPTShapeElement
+  handlerVisible: boolean
+  rotateElement: (e: MouseEvent, element: PPTShapeElement) => void
+  scaleElement: (e: MouseEvent, element: PPTShapeElement, command: OperateResizeHandlers) => void
+  moveShapeKeypoint: (e: MouseEvent, element: PPTShapeElement) => void
+}>()
 
 const { canvasScale } = storeToRefs(useMainStore())
 
@@ -81,7 +66,7 @@ const scaleHeight = computed(() => props.elementInfo.height * canvasScale.value)
 const { resizeHandlers, borderLines } = useCommonOperate(scaleWidth, scaleHeight)
 
 const keypointStyle = computed(() => {
-  if (!props.elementInfo.pathFormula || !props.elementInfo.keypoint) return {}
+  if (!props.elementInfo.pathFormula || props.elementInfo.keypoint === undefined) return {}
 
   const pathFormula = SHAPE_PATH_FORMULAS[props.elementInfo.pathFormula]
   if ('editable' in pathFormula) {

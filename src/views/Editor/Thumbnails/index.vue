@@ -7,7 +7,7 @@
   >
     <div class="add-slide">
       <div class="btn" @click="createSlide()"><IconPlus class="icon" />添加幻灯片</div>
-      <Popover trigger="click" placement="bottomLeft" v-model:visible="presetLayoutPopoverVisible">
+      <Popover trigger="click" placement="bottom-start" v-model:value="presetLayoutPopoverVisible" center>
         <template #content>
           <LayoutPool @select="slide => { createSlideByTemplate(slide); presetLayoutPopoverVisible = false }" />
         </template>
@@ -17,6 +17,7 @@
 
     <Draggable 
       class="thumbnail-list"
+      ref="thumbnailsRef"
       :modelValue="slides"
       :animation="200"
       :scroll="true"
@@ -32,6 +33,7 @@
             'selected': selectedSlidesIndex.includes(index),
           }"
           @mousedown="$event => handleClickSlideThumbnail($event, index)"
+          @dblclick="enterScreening()"
           v-contextmenu="contextmenusThumbnailItem"
         >
           <div class="label" :class="{ 'offset-left': index >= 99 }">{{ fillDigit(index + 1, 2) }}</div>
@@ -45,19 +47,20 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore, useKeyboardStore } from '@/store'
 import { fillDigit } from '@/utils/common'
-import { ContextmenuItem } from '@/components/Contextmenu/types'
+import { isElementInViewport } from '@/utils/element'
+import type { ContextmenuItem } from '@/components/Contextmenu/types'
 import useSlideHandler from '@/hooks/useSlideHandler'
 import useScreening from '@/hooks/useScreening'
 import useLoadSlides from '@/hooks/useLoadSlides'
 
 import ThumbnailSlide from '@/views/components/ThumbnailSlide/index.vue'
 import LayoutPool from './LayoutPool.vue'
+import Popover from '@/components/Popover.vue'
 import Draggable from 'vuedraggable'
-import { Popover } from 'ant-design-vue'
 
 const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
@@ -84,6 +87,26 @@ const {
   sortSlides,
 } = useSlideHandler()
 
+// 页面被切换时
+const thumbnailsRef = ref<InstanceType<typeof Draggable>>()
+watch(() => slideIndex.value, () => {
+
+  // 清除多选状态的幻灯片
+  if (selectedSlidesIndex.value.length) {
+    mainStore.updateSelectedSlidesIndex([])
+  }
+
+  // 检查当前页缩略图是否在可视范围，不在的话需要滚动到对应的位置
+  nextTick(() => {
+    const activeThumbnailRef: HTMLElement = thumbnailsRef.value?.$el?.querySelector('.thumbnail-item.active')
+    if (thumbnailsRef.value && activeThumbnailRef && !isElementInViewport(activeThumbnailRef, thumbnailsRef.value.$el)) {
+      setTimeout(() => {
+        activeThumbnailRef.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+    }
+  })
+})
+
 // 切换页面
 const changeSlideIndex = (index: number) => {
   mainStore.setActiveElementIdList([])
@@ -99,6 +122,7 @@ const handleClickSlideThumbnail = (e: MouseEvent, index: number) => {
   if (isMultiSelected && selectedSlidesIndex.value.includes(index) && e.button !== 0) return
 
   // 按住Ctrl键，点选幻灯片，再次点击已选中的页面则取消选中
+  // 如果被取消选中的页面刚好是当前激活页面，则需要从其他被选中的页面中选择第一个作为当前激活页面
   if (ctrlKeyState.value) {
     if (slideIndex.value === index) {
       if (!isMultiSelected) return
@@ -115,7 +139,6 @@ const handleClickSlideThumbnail = (e: MouseEvent, index: number) => {
       else {
         const newSelectedSlidesIndex = [...selectedSlidesIndex.value, index]
         mainStore.updateSelectedSlidesIndex(newSelectedSlidesIndex)
-        changeSlideIndex(index)
       }
     }
   }
@@ -134,7 +157,6 @@ const handleClickSlideThumbnail = (e: MouseEvent, index: number) => {
     const newSelectedSlidesIndex = []
     for (let i = minIndex; i <= maxIndex; i++) newSelectedSlidesIndex.push(i)
     mainStore.updateSelectedSlidesIndex(newSelectedSlidesIndex)
-    changeSlideIndex(index)
   }
   // 正常切换页面
   else {
@@ -261,6 +283,7 @@ const contextmenusThumbnailItem = (): ContextmenuItem[] => {
   }
   .select-btn {
     width: 30px;
+    height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -288,7 +311,7 @@ const contextmenusThumbnailItem = (): ContextmenuItem[] => {
   padding: 5px 0;
 
   .thumbnail {
-    outline: 1px solid rgba($color: $themeColor, $alpha: .15);
+    outline: 2px solid rgba($color: $themeColor, $alpha: .15);
   }
 
   &.active {

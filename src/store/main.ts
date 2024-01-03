@@ -1,10 +1,10 @@
 import { customAlphabet } from 'nanoid'
 import { defineStore } from 'pinia'
-import { CreatingElement, TextFormatPainter } from '@/types/edit'
 import { ToolbarStates } from '@/types/toolbar'
-import { DialogForExportTypes } from '@/types/export'
+import type { CreatingElement, ShapeFormatPainter, TextFormatPainter } from '@/types/edit'
+import type { DialogForExportTypes } from '@/types/export'
+import { type TextAttrs, defaultRichTextAttrs } from '@/utils/prosemirror/utils'
 import { SYS_FONTS } from '@/configs/font'
-import { TextAttrs, defaultRichTextAttrs } from '@/utils/prosemirror/utils'
 import { isSupportFont } from '@/utils/font'
 
 import { useSlidesStore } from './slides'
@@ -23,6 +23,7 @@ export interface MainState {
   gridLineSize: number
   showRuler: boolean
   creatingElement: CreatingElement | null
+  creatingCustomShape: boolean
   availableFonts: typeof SYS_FONTS
   toolbarState: ToolbarStates
   clipingImageElementId: string
@@ -33,7 +34,9 @@ export interface MainState {
   dialogForExport: DialogForExportTypes
   databaseId: string
   textFormatPainter: TextFormatPainter | null
+  shapeFormatPainter: ShapeFormatPainter | null
   showSelectPanel: boolean
+  showSearchPanel: boolean
 }
 
 const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz')
@@ -54,6 +57,7 @@ export const useMainStore = defineStore('main', {
     gridLineSize: 0, // 网格线尺寸（0表示不显示网格线）
     showRuler: false, // 显示标尺
     creatingElement: null, // 正在插入的元素信息，需要通过绘制插入的元素（文字、形状、线条）
+    creatingCustomShape: false, // 正在绘制任意多边形
     availableFonts: SYS_FONTS, // 当前环境可用字体
     toolbarState: ToolbarStates.SLIDE_DESIGN, // 右侧工具栏状态
     clipingImageElementId: '', // 当前正在裁剪的图片ID  
@@ -64,7 +68,9 @@ export const useMainStore = defineStore('main', {
     dialogForExport: '', // 导出面板
     databaseId, // 标识当前应用的indexedDB数据库ID
     textFormatPainter: null, // 文字格式刷
+    shapeFormatPainter: null, // 形状格式刷
     showSelectPanel: false, // 打开选择面板
+    showSearchPanel: false, // 打开查找替换面板
   }),
 
   getters: {
@@ -139,6 +145,10 @@ export const useMainStore = defineStore('main', {
       this.creatingElement = element
     },
   
+    setCreatingCustomShapeState(state: boolean) {
+      this.creatingCustomShape = state
+    },
+  
     setAvailableFonts() {
       this.availableFonts = SYS_FONTS.filter(font => isSupportFont(font.value))
     },
@@ -175,8 +185,16 @@ export const useMainStore = defineStore('main', {
       this.textFormatPainter = textFormatPainter
     },
 
+    setShapeFormatPainter(shapeFormatPainter: ShapeFormatPainter | null) {
+      this.shapeFormatPainter = shapeFormatPainter
+    },
+
     setSelectPanelState(show: boolean) {
       this.showSelectPanel = show
+    },
+
+    setSearchPanelState(show: boolean) {
+      this.showSearchPanel = show
     },
   },
 })

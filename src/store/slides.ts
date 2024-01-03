@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import tinycolor from 'tinycolor2'
 import { omit } from 'lodash'
-import { Slide, SlideTheme, PPTElement, PPTAnimation } from '@/types/slides'
+import type { Slide, SlideTheme, PPTElement, PPTAnimation } from '@/types/slides'
 import { slides } from '@/mocks/slides'
 import { theme } from '@/mocks/theme'
 import { layouts } from '@/mocks/layout'
@@ -14,6 +14,7 @@ interface RemoveElementPropData {
 interface UpdateElementData {
   id: string | string[]
   props: Partial<PPTElement>
+  slideId?: string
 }
 
 interface FormatedAnimation {
@@ -22,6 +23,7 @@ interface FormatedAnimation {
 }
 
 export interface SlidesState {
+  title: string
   theme: SlideTheme
   slides: Slide[]
   slideIndex: number
@@ -30,6 +32,7 @@ export interface SlidesState {
 
 export const useSlidesStore = defineStore('slides', {
   state: (): SlidesState => ({
+    title: '未命名演示文稿', // 幻灯片标题
     theme: theme, // 主题样式
     slides: slides, // 幻灯片页面数据
     slideIndex: 0, // 当前页面索引
@@ -104,6 +107,11 @@ export const useSlidesStore = defineStore('slides', {
   },
 
   actions: {
+    setTitle(title: string) {
+      if (!title) this.title = '未命名演示文稿'
+      else this.title = title
+    },
+
     setTheme(themeProps: Partial<SlideTheme>) {
       this.theme = { ...this.theme, ...themeProps }
     },
@@ -164,10 +172,10 @@ export const useSlidesStore = defineStore('slides', {
     },
   
     updateElement(data: UpdateElementData) {
-      const { id, props } = data
+      const { id, props, slideId } = data
       const elIdList = typeof id === 'string' ? [id] : id
-  
-      const slideIndex = this.slideIndex
+
+      const slideIndex = slideId ? this.slides.findIndex(item => item.id === slideId) : this.slideIndex
       const slide = this.slides[slideIndex]
       const elements = slide.elements.map(el => {
         return elIdList.includes(el.id) ? { ...el, ...props } : el

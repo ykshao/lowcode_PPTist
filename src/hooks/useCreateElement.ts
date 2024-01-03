@@ -3,9 +3,9 @@ import { nanoid } from 'nanoid'
 import { useMainStore, useSlidesStore } from '@/store'
 import { getImageSize } from '@/utils/image'
 import { VIEWPORT_SIZE } from '@/configs/canvas'
-import { PPTLineElement, PPTElement, TableCell, TableCellStyle, PPTShapeElement, PPTChartElement, ChartOptions, PresetChartType } from '@/types/slides'
-import { ShapePoolItem, SHAPE_PATH_FORMULAS } from '@/configs/shapes'
-import { LinePoolItem } from '@/configs/lines'
+import type { PPTLineElement, PPTElement, TableCell, TableCellStyle, PPTShapeElement, PPTChartElement, ChartOptions, PresetChartType } from '@/types/slides'
+import { type ShapePoolItem, SHAPE_PATH_FORMULAS } from '@/configs/shapes'
+import type { LinePoolItem } from '@/configs/lines'
 import { CHART_TYPES } from '@/configs/chartTypes'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
@@ -213,7 +213,7 @@ export default () => {
    * @param position 位置大小信息
    * @param data 形状路径信息
    */
-  const createShapeElement = (position: CommonElementPosition, data: ShapePoolItem) => {
+  const createShapeElement = (position: CommonElementPosition, data: ShapePoolItem, supplement: Partial<PPTShapeElement> = {}) => {
     const { left, top, width, height } = position
     const newElement: PPTShapeElement = {
       type: 'shape',
@@ -227,6 +227,7 @@ export default () => {
       fill: theme.value.themeColor,
       fixedRatio: false,
       rotate: 0,
+      ...supplement,
     }
     if (data.special) newElement.special = true
     if (data.pathFormula) {
@@ -305,6 +306,7 @@ export default () => {
       left: (VIEWPORT_SIZE - 500) / 2,
       top: (VIEWPORT_SIZE * viewportRatio.value - 300) / 2,
       src,
+      autoplay: false,
     })
   }
   
