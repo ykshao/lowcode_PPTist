@@ -3,9 +3,12 @@
     <div class="left-handler">
       <IconBack class="handler-item" :class="{ 'disable': !canUndo }" v-tooltip="'撤销'" @click="undo()" />
       <IconNext class="handler-item" :class="{ 'disable': !canRedo }" v-tooltip="'重做'" @click="redo()" />
-      <Divider type="vertical" style="height: 20px;" />
-      <IconMoveOne class="handler-item" :class="{ 'active': showSelectPanel }" v-tooltip="'选择窗格'" @click="toggleSelectPanel()" />
-      <IconSearch class="handler-item" :class="{ 'active': showSearchPanel }" v-tooltip="'查找/替换'" @click="toggleSraechPanel()" />
+      <div class="more">
+        <Divider type="vertical" style="height: 20px;" />
+        <IconComment class="handler-item" :class="{ 'active': showNotesPanel }" v-tooltip="'批注'" @click="toggleNotesPanel()" />
+        <IconMoveOne class="handler-item" :class="{ 'active': showSelectPanel }" v-tooltip="'选择窗格'" @click="toggleSelectPanel()" />
+        <IconSearch class="handler-item" :class="{ 'active': showSearchPanel }" v-tooltip="'查找/替换'" @click="toggleSraechPanel()" />
+      </div>
     </div>
 
     <div class="add-element-handler">
@@ -73,6 +76,7 @@
             :key="item" 
             @click="applyCanvasPresetScale(item)"
           >{{item}}%</PopoverMenuItem>
+          <PopoverMenuItem center @click="resetCanvas()">适应屏幕</PopoverMenuItem>
         </template>
         <span class="text">{{canvasScalePercentage}}</span>
       </Popover>
@@ -116,7 +120,7 @@ import Popover from '@/components/Popover.vue'
 import PopoverMenuItem from '@/components/PopoverMenuItem.vue'
 
 const mainStore = useMainStore()
-const { creatingElement, creatingCustomShape, showSelectPanel, showSearchPanel } = storeToRefs(mainStore)
+const { creatingElement, creatingCustomShape, showSelectPanel, showSearchPanel, showNotesPanel } = storeToRefs(mainStore)
 const { canUndo, canRedo } = storeToRefs(useSnapshotStore())
 
 const { redo, undo } = useHistorySnapshot()
@@ -128,7 +132,7 @@ const {
   canvasScalePercentage,
 } = useScaleCanvas()
 
-const canvasScalePresetList = [200, 150, 100, 80, 50]
+const canvasScalePresetList = [200, 150, 125, 100, 75, 50]
 const canvasScaleVisible = ref(false)
 
 const applyCanvasPresetScale = (value: number) => {
@@ -199,6 +203,11 @@ const toggleSelectPanel = () => {
 const toggleSraechPanel = () => {
   mainStore.setSearchPanelState(!showSearchPanel.value)
 }
+
+// 打开批注面板
+const toggleNotesPanel = () => {
+  mainStore.setNotesPanelState(!showNotesPanel.value)
+}
 </script>
 
 <style lang="scss" scoped>
@@ -212,7 +221,7 @@ const toggleSraechPanel = () => {
   font-size: 13px;
   user-select: none;
 }
-.left-handler {
+.left-handler, .more {
   display: flex;
   align-items: center;
 }
@@ -311,8 +320,11 @@ const toggleSraechPanel = () => {
   }
 }
 
-@media screen and (width <= 1024px) {
-  .text {
+@media screen and (width <= 1200px) {
+  .right-handler .text {
+    display: none;
+  }
+  .more {
     display: none;
   }
 }

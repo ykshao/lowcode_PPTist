@@ -66,7 +66,7 @@
           </template>
         </NumberInput>
         <template v-if="['image', 'shape', 'audio'].includes(handleElement!.type)">
-          <IconLock style="width: 10%;" class="icon-btn" v-tooltip="'解除宽高比锁定'" @click="updateFixedRatio(false)" v-if="fixedRatio" />
+          <IconLock style="width: 10%;" class="icon-btn active" v-tooltip="'解除宽高比锁定'" @click="updateFixedRatio(false)" v-if="fixedRatio" />
           <IconUnlock style="width: 10%;" class="icon-btn" v-tooltip="'宽高比锁定'" @click="updateFixedRatio(true)" v-else />
         </template>
         <div style="width: 10%;" v-else></div>
@@ -115,6 +115,7 @@ import { computed, ref, watch } from 'vue'
 import { round } from 'lodash'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
+import type { PPTElement } from '@/types/slides'
 import { ElementAlignCommands, ElementOrderCommands } from '@/types/edit'
 import { MIN_SIZE } from '@/configs/element'
 import { SHAPE_PATH_FORMULAS } from '@/configs/shapes'
@@ -197,22 +198,51 @@ const updateShapePathData = (width: number, height: number) => {
   }
   return null
 }
+
 const updateWidth = (value: number) => {
-  let props = { width: value }
-  const shapePathData = updateShapePathData(value, height.value)
-  if (shapePathData) props = { ...props, ...shapePathData }
+  let h = height.value
+
+  if (fixedRatio.value) {
+    const ratio = width.value / height.value
+    h = (value / ratio) < minSize.value ? minSize.value : (value / ratio)
+  }
+  let props: Partial<PPTElement> = { width: value, height: h }
+
+  const shapePathData = updateShapePathData(value, h)
+  if (shapePathData) {
+    props = {
+      width: value,
+      height: h,
+      ...shapePathData,
+    }
+  }
 
   slidesStore.updateElement({ id: handleElementId.value, props })
   addHistorySnapshot()
 }
+
 const updateHeight = (value: number) => {
-  let props = { height: value }
-  const shapePathData = updateShapePathData(width.value, value)
-  if (shapePathData) props = { ...props, ...shapePathData }
+  let w = width.value
+
+  if (fixedRatio.value) {
+    const ratio = width.value / height.value
+    w = (value * ratio) < minSize.value ? minSize.value : (value * ratio)
+  }
+  let props: Partial<PPTElement> = { width: w, height: value }
+
+  const shapePathData = updateShapePathData(w, value)
+  if (shapePathData) {
+    props = {
+      width: w,
+      height: value,
+      ...shapePathData,
+    }
+  }
 
   slidesStore.updateElement({ id: handleElementId.value, props })
   addHistorySnapshot()
 }
+
 const updateRotate = (value: number) => {
   const props = { rotate: value }
   slidesStore.updateElement({ id: handleElementId.value, props })
@@ -259,6 +289,10 @@ const updateRotate45 = (command: '+' | '-') => {
 }
 .icon-btn {
   cursor: pointer;
+
+  &.active {
+    color: $themeColor;
+  }
 }
 .text-btn {
   height: 30px;
