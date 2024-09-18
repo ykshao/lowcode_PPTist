@@ -12,6 +12,7 @@ export interface ShapePoolItem {
   outlined?: boolean
   pptxShapeType?: string
   title?: string
+  withborder?: boolean
 }
 
 interface ShapeListItem {
@@ -19,206 +20,226 @@ interface ShapeListItem {
   children: ShapePoolItem[]
 }
 
-export const SHAPE_PATH_FORMULAS = {
+export interface ShapePathFormula {
+  editable?: boolean
+  defaultValue?: number[]
+  range?: [number, number][]
+  relative?: string[]
+  getBaseSize?: ((width: number, height: number) => number)[]
+  formula: (width: number, height: number, values?: number[]) => string
+}
+
+export const SHAPE_PATH_FORMULAS: {
+  [key: string]: ShapePathFormula
+} = {
   [ShapePathFormulasKeys.ROUND_RECT]: {
     editable: true,
-    defaultValue: 0.125,
-    range: [0, 0.5],
-    relative: 'left',
-    getBaseSize: (width: number, height: number) => Math.min(width, height),
-    formula: (width: number, height: number, value: number) => {
-      const radius = Math.min(width, height) * value
+    defaultValue: [0.125],
+    range: [[0, 0.5]],
+    relative: ['left'],
+    getBaseSize: [(width, height) => Math.min(width, height)],
+    formula: (width, height, values) => {
+      const radius = Math.min(width, height) * values![0]
       return `M ${radius} 0 L ${width - radius} 0 Q ${width} 0 ${width} ${radius} L ${width} ${height - radius} Q ${width} ${height} ${width - radius} ${height} L ${radius} ${height} Q 0 ${height} 0 ${height - radius} L 0 ${radius} Q 0 0 ${radius} 0 Z`
     }
   },
   [ShapePathFormulasKeys.CUT_RECT_DIAGONAL]: {
     editable: true,
-    defaultValue: 0.2,
-    range: [0, 0.9],
-    relative: 'right',
-    getBaseSize: (width: number, height: number) => Math.min(width, height),
-    formula: (width: number, height: number, value: number) => {
-      const radius = Math.min(width, height) * value
+    defaultValue: [0.2],
+    range: [[0, 0.9]],
+    relative: ['right'],
+    getBaseSize: [(width, height) => Math.min(width, height)],
+    formula: (width, height, values) => {
+      const radius = Math.min(width, height) * values![0]
       return `M 0 ${height - radius} L 0 0 L ${width - radius} 0 L ${width} ${radius} L ${width} ${height} L ${radius} ${height} Z`
     }
   },
   [ShapePathFormulasKeys.CUT_RECT_SINGLE]: {
     editable: true,
-    defaultValue: 0.2,
-    range: [0, 0.9],
-    relative: 'right',
-    getBaseSize: (width: number, height: number) => Math.min(width, height),
-    formula: (width: number, height: number, value: number) => {
-      const radius = Math.min(width, height) * value
+    defaultValue: [0.2],
+    range: [[0, 0.9]],
+    relative: ['right'],
+    getBaseSize: [(width, height) => Math.min(width, height)],
+    formula: (width, height, values) => {
+      const radius = Math.min(width, height) * values![0]
       return `M 0 ${height} L 0 0 L ${width - radius} 0 L ${width} ${radius} L ${width} ${height} Z`
     }
   },
   [ShapePathFormulasKeys.CUT_RECT_SAMESIDE]: {
     editable: true,
-    defaultValue: 0.2,
-    range: [0, 0.5],
-    relative: 'left',
-    getBaseSize: (width: number, height: number) => Math.min(width, height),
-    formula: (width: number, height: number, value: number) => {
-      const radius = Math.min(width, height) * value
+    defaultValue: [0.2],
+    range: [[0, 0.5]],
+    relative: ['left'],
+    getBaseSize: [(width, height) => Math.min(width, height)],
+    formula: (width, height, values) => {
+      const radius = Math.min(width, height) * values![0]
       return `M 0 ${radius} L ${radius} 0 L ${width - radius} 0 L ${width} ${radius} L ${width} ${height} L 0 ${height} Z`
     }
   },
   [ShapePathFormulasKeys.ROUND_RECT_DIAGONAL]: {
     editable: true,
-    defaultValue: 0.125,
-    range: [0, 1],
-    relative: 'left',
-    getBaseSize: (width: number, height: number) => Math.min(width, height),
-    formula: (width: number, height: number, value: number) => {
-      const radius = Math.min(width, height) * value
+    defaultValue: [0.125],
+    range: [[0, 1]],
+    relative: ['left'],
+    getBaseSize: [(width, height) => Math.min(width, height)],
+    formula: (width, height, values) => {
+      const radius = Math.min(width, height) * values![0]
       return `M ${radius} 0 L ${width} 0 L ${width} ${height - radius} Q ${width} ${height} ${width - radius} ${height} L 0 ${height} L 0 ${radius} Q 0 0 ${radius} 0 Z`
     }
   },
   [ShapePathFormulasKeys.ROUND_RECT_SINGLE]: {
     editable: true,
-    defaultValue: 0.125,
-    range: [0, 1],
-    relative: 'right',
-    getBaseSize: (width: number, height: number) => Math.min(width, height),
-    formula: (width: number, height: number, value: number) => {
-      const radius = Math.min(width, height) * value
+    defaultValue: [0.125],
+    range: [[0, 1]],
+    relative: ['right'],
+    getBaseSize: [(width, height) => Math.min(width, height)],
+    formula: (width, height, values) => {
+      const radius = Math.min(width, height) * values![0]
       return `M 0 0 L ${width - radius} 0 Q ${width} 0 ${width} ${radius} L ${width} ${height} L 0 ${height} L 0 0 Z`
     }
   },
   [ShapePathFormulasKeys.ROUND_RECT_SAMESIDE]: {
     editable: true,
-    defaultValue: 0.125,
-    range: [0, 0.5],
-    relative: 'left',
-    getBaseSize: (width: number, height: number) => Math.min(width, height),
-    formula: (width: number, height: number, value: number) => {
-      const radius = Math.min(width, height) * value
+    defaultValue: [0.125],
+    range: [[0, 0.5]],
+    relative: ['left'],
+    getBaseSize: [(width, height) => Math.min(width, height)],
+    formula: (width, height, values) => {
+      const radius = Math.min(width, height) * values![0]
       return `M 0 ${radius} Q 0 0 ${radius} 0 L ${width - radius} 0 Q ${width} 0 ${width} ${radius} L ${width} ${height} L 0 ${height} Z`
     }
   },
   [ShapePathFormulasKeys.CUT_ROUND_RECT]: {
     editable: true,
-    defaultValue: 0.125,
-    range: [0, 0.5],
-    relative: 'left',
-    getBaseSize: (width: number, height: number) => Math.min(width, height),
-    formula: (width: number, height: number, value: number) => {
-      const radius = Math.min(width, height) * value
+    defaultValue: [0.125],
+    range: [[0, 0.5]],
+    relative: ['left'],
+    getBaseSize: [(width, height) => Math.min(width, height)],
+    formula: (width, height, values) => {
+      const radius = Math.min(width, height) * values![0]
       return `M ${radius} 0 L ${width - radius} 0 L ${width} ${radius} L ${width} ${height} L 0 ${height} L 0 ${radius} Q 0 0 ${radius} 0 Z`
     }
   },
   [ShapePathFormulasKeys.MESSAGE]: {
-    formula: (width: number, height: number) => {
+    editable: true,
+    range: [[0, 0.8], [0.1, 0.3]],
+    defaultValue: [0.3, 0.2],
+    relative: ['left_bottom', 'bottom'],
+    getBaseSize: [
+      width => width,
+      (width, height) => height,
+    ],
+    formula: (width, height, values) => {
+      const point = width * values![0]
       const arrowWidth = width * 0.2
-      const arrowheight = height * 0.2
-      return `M 0 0 L ${width} 0 L ${width} ${height - arrowheight} L ${width / 2} ${height - arrowheight} L ${width / 2 - arrowWidth} ${height} L ${width / 2 - arrowWidth} ${height - arrowheight} L 0 ${height - arrowheight} Z`
+      const arrowheight = height * values![1]
+      return `M 0 0 L ${width} 0 L ${width} ${height - arrowheight} L ${point + arrowWidth} ${height - arrowheight} L ${point} ${height} L ${point} ${height - arrowheight} L 0 ${height - arrowheight} Z`
     }
   },
   [ShapePathFormulasKeys.ROUND_MESSAGE]: {
-    formula: (width: number, height: number) => {
+    formula: (width, height) => {
       const radius = Math.min(width, height) * 0.125
-      const arrowWidth = width * 0.2
-      const arrowheight = height * 0.2
+      const arrowWidth = Math.min(width, height) * 0.2
+      const arrowheight = Math.min(width, height) * 0.2
       return `M 0 ${radius} Q 0 0 ${radius} 0 L ${width - radius} 0 Q ${width} 0 ${width} ${radius} L ${width} ${height - radius - arrowheight} Q ${width} ${height - arrowheight} ${width - radius} ${height - arrowheight} L ${width / 2} ${height - arrowheight} L ${width / 2 - arrowWidth} ${height} L ${width / 2 - arrowWidth} ${height - arrowheight} L ${radius} ${height - arrowheight} Q 0 ${height - arrowheight} 0 ${height - radius - arrowheight} L 0 ${radius} Z`
     }
   },
   [ShapePathFormulasKeys.L]: {
     editable: true,
-    defaultValue: 0.25,
-    range: [0.1, 0.9],
-    relative: 'left',
-    getBaseSize: (width: number, height: number) => Math.min(width, height),
-    formula: (width: number, height: number, value: number) => {
-      const lineWidth = Math.min(width, height) * value
+    defaultValue: [0.25],
+    range: [[0.1, 0.9]],
+    relative: ['left'],
+    getBaseSize: [(width, height) => Math.min(width, height)],
+    formula: (width, height, values) => {
+      const lineWidth = Math.min(width, height) * values![0]
       return `M 0 0 L 0 ${height} L ${width} ${height} L ${width} ${height - lineWidth} L ${lineWidth} ${height - lineWidth} L ${lineWidth} 0 Z`
     }
   },
   [ShapePathFormulasKeys.RING_RECT]: {
     editable: true,
-    defaultValue: 0.25,
-    range: [0.1, 0.45],
-    relative: 'left',
-    getBaseSize: (width: number, height: number) => Math.min(width, height),
-    formula: (width: number, height: number, value: number) => {
-      const lineWidth = Math.min(width, height) * value
+    defaultValue: [0.25],
+    range: [[0.1, 0.45]],
+    relative: ['left'],
+    getBaseSize: [(width, height) => Math.min(width, height)],
+    formula: (width, height, values) => {
+      const lineWidth = Math.min(width, height) * values![0]
       return `M 0 0 ${width} 0 ${width} ${height} L 0 ${height} L 0 0 Z M ${lineWidth} ${lineWidth} L ${lineWidth} ${height - lineWidth} L ${width - lineWidth} ${height - lineWidth} L ${width - lineWidth} ${lineWidth} Z`
     }
   },
   [ShapePathFormulasKeys.PLUS]: {
     editable: true,
-    defaultValue: 0.25,
-    range: [0.1, 0.9],
-    relative: 'center',
-    getBaseSize: (width: number, height: number) => Math.min(width, height),
-    formula: (width: number, height: number, value: number) => {
-      const lineWidth = Math.min(width, height) * value
+    defaultValue: [0.25],
+    range: [[0.1, 0.9]],
+    relative: ['center'],
+    getBaseSize: [(width, height) => Math.min(width, height)],
+    formula: (width, height, values) => {
+      const lineWidth = Math.min(width, height) * values![0]
       return `M ${width / 2 - lineWidth / 2} 0 L ${width / 2 - lineWidth / 2} ${height / 2 - lineWidth / 2} L 0 ${height / 2 - lineWidth / 2} L 0 ${height / 2 + lineWidth / 2} L ${width / 2 - lineWidth / 2} ${height / 2 + lineWidth / 2} L ${width / 2 - lineWidth / 2} ${height} L ${width / 2 + lineWidth / 2} ${height} L ${width / 2 + lineWidth / 2} ${height / 2 + lineWidth / 2} L ${width} ${height / 2 + lineWidth / 2} L ${width} ${height / 2 - lineWidth / 2} L ${width / 2 + lineWidth / 2} ${height / 2 - lineWidth / 2} L ${width / 2 + lineWidth / 2} 0 Z`
     }
   },
   [ShapePathFormulasKeys.TRIANGLE]: {
     editable: true,
-    defaultValue: 0.5,
-    range: [0, 1],
-    relative: 'left',
-    getBaseSize: (width: number) => width,
-    formula: (width: number, height: number, value: number) => {
-      const vertex = width * value
+    defaultValue: [0.5],
+    range: [[0, 1]],
+    relative: ['left'],
+    getBaseSize: [width => width],
+    formula: (width, height, values) => {
+      const vertex = width * values![0]
       return `M ${vertex} 0 L 0 ${height} L ${width} ${height} Z`
     }
   },
   [ShapePathFormulasKeys.PARALLELOGRAM_LEFT]: {
     editable: true,
-    defaultValue: 0.25,
-    range: [0, 0.9],
-    relative: 'left',
-    getBaseSize: (width: number) => width,
-    formula: (width: number, height: number, value: number) => {
-      const point = width * value
+    defaultValue: [0.25],
+    range: [[0, 0.9]],
+    relative: ['left'],
+    getBaseSize: [width => width],
+    formula: (width, height, values) => {
+      const point = width * values![0]
       return `M ${point} 0 L ${width} 0 L ${width - point} ${height} L 0 ${height} Z`
     }
   },
   [ShapePathFormulasKeys.PARALLELOGRAM_RIGHT]: {
     editable: true,
-    defaultValue: 0.25,
-    range: [0, 0.9],
-    relative: 'right',
-    getBaseSize: (width: number) => width,
-    formula: (width: number, height: number, value: number) => {
-      const point = width * value
+    defaultValue: [0.25],
+    range: [[0, 0.9]],
+    relative: ['right'],
+    getBaseSize: [width => width],
+    formula: (width, height, values) => {
+      const point = width * values![0]
       return `M 0 0 L ${width - point} 0 L ${width} ${height} L ${point} ${height} Z`
     }
   },
   [ShapePathFormulasKeys.TRAPEZOID]: {
     editable: true,
-    defaultValue: 0.25,
-    range: [0, 0.5],
-    relative: 'left',
-    getBaseSize: (width: number) => width,
-    formula: (width: number, height: number, value: number) => {
-      const point = width * value
+    defaultValue: [0.25],
+    range: [[0, 0.5]],
+    relative: ['left'],
+    getBaseSize: [width => width],
+    formula: (width, height, values) => {
+      const point = width * values![0]
       return `M ${point} 0 L ${width - point} 0 L ${width} ${height} L 0 ${height} Z`
     }
   },
   [ShapePathFormulasKeys.BULLET]: {
     editable: true,
-    defaultValue: 0.2,
-    range: [0, 1],
-    relative: 'top',
-    getBaseSize: (width: number, height: number) => height,
-    formula: (width: number, height: number, value: number) => {
-      const point = height * value
+    defaultValue: [0.2],
+    range: [[0, 1]],
+    relative: ['top'],
+    getBaseSize: [(width, height) => height],
+    formula: (width, height, values) => {
+      const point = height * values![0]
       return `M ${width / 2} 0 L 0 ${point} L 0 ${height} L ${width} ${height} L ${width} ${point} Z`
     }
   },
   [ShapePathFormulasKeys.INDICATOR]: {
     editable: true,
-    defaultValue: 0.2,
-    range: [0, 0.9],
-    relative: 'right',
-    getBaseSize: (width: number) => width,
-    formula: (width: number, height: number, value: number) => {
-      const point = width * value
+    defaultValue: [0.2],
+    range: [[0, 0.9]],
+    relative: ['right'],
+    getBaseSize: [width => width],
+    formula: (width, height, values) => {
+      const point = width * values![0]
       return `M ${width} ${height / 2} L ${width - point} 0 L 0 0 L ${point} ${height / 2} L 0 ${height} L ${width - point} ${height} Z`
     }
   },
@@ -280,11 +301,6 @@ export const SHAPE_LIST: ShapeListItem[] = [
         path: 'M 50 0 L 200 0 L 200 150 Q 200 200 150 200 L 0 200 L 0 50 Q 0 0 50 0 Z',
         pathFormula: ShapePathFormulasKeys.ROUND_RECT_DIAGONAL,
         pptxShapeType: 'round2DiagRect',
-      },
-      {
-        viewBox: [200, 200],
-        path: 'M 0 80 L 60 0 L 100 40 L 180 20 L 200 120 L 160 200 L 0 200 L 60 140 Z',
-        title: '任意多边形',
       },
     ]
   },
@@ -384,7 +400,7 @@ export const SHAPE_LIST: ShapeListItem[] = [
       },
       {
         viewBox: [200, 200],
-        path: 'M 100 0 L 0 90 L 50 200 L 150 200 L 200 90 L 100 0 Z',
+        path: `M100,0 L200,76.6 L161.8,200 L38.2,200 L0,76.6 Z`,
         pptxShapeType: 'pentagon',
       },
       {
@@ -398,12 +414,17 @@ export const SHAPE_LIST: ShapeListItem[] = [
       },
       {
         viewBox: [200, 200],
+        path: `M100,0 L170.71,29.29 L200,100 L170.71,170.71 L100,200 L29.29,170.71 L0,100 L29.29,29.29 Z`,
+      },
+      {
+        viewBox: [200, 200],
         path: 'M 60 0 L 140 0 L 200 60 L 200 140 L 140 200 L 60 200 L 0 140 L 0 60 L 60 0 Z',
         pptxShapeType: 'octagon',
       },
       {
         viewBox: [200, 200],
-        path: 'M 75 0 L 125 0 L 175 25 L 200 75 L 200 125 L 175 175 L 125 200 L 75 200 L 25 175 L 0 125 L 0 75 L 25 25 L 75 0 Z'
+        path: 'M 75 0 L 125 0 L 175 25 L 200 75 L 200 125 L 175 175 L 125 200 L 75 200 L 25 175 L 0 125 L 0 75 L 25 25 L 75 0 Z',
+        pptxShapeType: 'dodecagon',
       },
       {
         viewBox: [200, 200],
@@ -419,7 +440,8 @@ export const SHAPE_LIST: ShapeListItem[] = [
       },
       {
         viewBox: [200, 200],
-        path: 'M 200 0 L 200 200 L 0 200 L 0 100 L 200 0 Z'
+        path: 'M 200 0 L 200 200 L 0 200 L 0 100 L 200 0 Z',
+        pptxShapeType: 'flowChartManualInput',
       },
       {
         viewBox: [200, 200],
@@ -427,60 +449,97 @@ export const SHAPE_LIST: ShapeListItem[] = [
       },
       {
         viewBox: [200, 200],
-        path: 'M 200 0 L 100 0 L 0 100 L 0 200 L 200 0 Z'
+        path: 'M 0 0 L 200 0 L 200 150 C 110 140 110 240 0 180 Z',
+        pptxShapeType: 'flowChartDocument',
       },
       {
         viewBox: [200, 200],
-        path: 'M 50 0 L 150 0 L 150 50 L 200 50 L 200 150 L 150 150 L 150 200 L 50 200 L 50 150 L 0 150 L 0 50 L 50 50 L 50 0 Z'
+        path: 'M 200 0 L 100 0 L 0 100 L 0 200 L 200 0 Z',
+        pptxShapeType: 'diagStripe',
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 50 0 L 150 0 L 150 50 L 200 50 L 200 150 L 150 150 L 150 200 L 50 200 L 50 150 L 0 150 L 0 50 L 50 50 L 50 0 Z',
       },
       {
         viewBox: [200, 200],
         path: 'M 0 0 L 0 200 L 200 200 L 200 140 L 60 140 L 60 0 L 0 0 Z',
-        pathFormula: ShapePathFormulasKeys.L
+        pathFormula: ShapePathFormulasKeys.L,
+        pptxShapeType: 'corner',
       },
       {
         viewBox: [200, 200],
         path: 'M0 0 L200 0 L200 200 L0 200 L0 0 Z M50 50 L50 150 L150 150 L150 50 Z',
         pathFormula: ShapePathFormulasKeys.RING_RECT,
+        pptxShapeType: 'frame',
       },
       {
         viewBox: [200, 200],
         path: 'M0 100 A100 100 0 1 1 0 101 Z M150 100 A50 50 0 1 0 150 101 Z',
+        pptxShapeType: 'donut',
       },
       {
         viewBox: [200, 200],
         path: 'M 70 0 L 70 70 L 0 70 L 0 130 L 70 130 L 70 200 L 130 200 L 130 130 L 200 130 L 200 70 L 130 70 L 130 0 L 70 0 Z',
         pathFormula: ShapePathFormulasKeys.PLUS,
+        pptxShapeType: 'mathPlus',
       },
       {
         viewBox: [200, 200],
-        path: 'M 40 0 L 0 40 L 60 100 L 0 160 L 40 200 L 100 140 L 160 200 L 200 160 L 140 100 L 200 40 L 160 0 L 100 60 L 40 0 Z'
+        path: 'M 0 70 L 200 70 L 200 130 L 0 130 Z',
+        pptxShapeType: 'mathMinus',
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 40 0 L 0 40 L 60 100 L 0 160 L 40 200 L 100 140 L 160 200 L 200 160 L 140 100 L 200 40 L 160 0 L 100 60 L 40 0 Z',
+        pptxShapeType: 'mathMultiply',
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 0 80 L 200 80 L 200 120 L 0 120 Z M 100 0 A 25 25 0 1 1 100 50 A 25 25 0 1 1 100 0 M 100 200 A 25 25 0 1 1 100 150 A 25 25 0 1 1 100 200',
+        pptxShapeType: 'mathDivide',
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 0 30 L 200 30 L 200 80 L 0 80 Z M 0 120 L 200 120 L 200 170 L 0 170 Z',
+        pptxShapeType: 'mathEqual',
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 120 0 L 170 0 L 150 40 L 200 40 L 200 80 L 130 80 L 110 120 L 200 120 L 200 160 L 90 160 L 70 200 L 20 200 L 40 160 L 0 160 L 0 120 L 60 120 L 80 80 L 0 80 L 0 40 L 100 40 Z',
+        pptxShapeType: 'mathNotEqual',
       },
       {
         viewBox: [200, 200],
         path: 'M 0 0 L 200 0 L 200 160 L 100 160 L 60 200 L 60 160 L 0 160 Z',
         pathFormula: ShapePathFormulasKeys.MESSAGE,
+        pptxShapeType: 'wedgeRectCallout',
       },
       {
         viewBox: [200, 200],
         path: 'M 0 40 Q 0 0 40 0 L 160 0 Q 200 0 200 40 L 200 120 Q 200 160 160 160 L 100 160 L 60 200 L 60 160 L 40 160 Q 0 160 0 120 L 0 40 Z',
         pathFormula: ShapePathFormulasKeys.ROUND_MESSAGE,
+        pptxShapeType: 'wedgeRoundRectCallout',
       },
       {
         viewBox: [200, 200],
-        path: 'M 180 160 A 100 100 0 1 0 100 200 L 200 200 L 200 160 L 180 160 Z'
+        path: 'M 180 160 A 100 100 0 1 0 100 200 L 200 200 L 200 160 L 180 160 Z',
+        pptxShapeType: 'flowChartMagneticTape',
       },
       {
         viewBox: [200, 200],
-        path: 'M 200 0 L 0 0 L 200 200 L 0 200 L 200 0 Z'
+        path: 'M 200 0 L 0 0 L 200 200 L 0 200 L 200 0 Z',
+        pptxShapeType: 'flowChartCollate',
       },
       {
         viewBox: [200, 200],
         path: 'M 0 20 C 60 60 140 -40 200 20 L 200 180 C 140 140 60 240 0 180 L 0 20 Z',
+        pptxShapeType: 'wave',
       },
       {
         viewBox: [200, 200],
         path: 'M 0 20 C 40 -40 60 60 100 20 C 140 -40 160 60 200 20 L 200 180 C 140 240 160 140 100 180 C 40 240 60 140 0 180 L 0 20 Z',
+        pptxShapeType: 'doubleWave',
       },
       {
         viewBox: [200, 200],
@@ -512,11 +571,67 @@ export const SHAPE_LIST: ShapeListItem[] = [
       },
       {
         viewBox: [200, 200],
-        path: 'M 100 0 L 80 40 L 20 20 L 40 80 L 0 100 L 40 120 L 20 180 L 80 160 L 100 200 L 120 160 L 180 180 L 160 120 L 200 100 L 160 80 L 180 20 L 120 40 L 100 0 Z',
+        path: 'M 100 0 L 130 30 L 170 30 L 170 70 L 200 100 L 170 130 L 170 170 L 130 170 L 100 200 L 70 170 L 30 170 L 30 130 L 0 100 L 30 70 L 30 30 L 70 30 L 100 0',
+        pptxShapeType: 'star8',
       },
       {
         viewBox: [200, 200],
-        path: 'M 200 0 C 80 40 80 160 200 200 C -60 200 -60 0 200 0 Z',
+        path: 'M 100 0 A 50 50 0 1 0 200 120 A 100 100 0 1 1 100 0 Z'
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 120 0 L 100 80 L 200 80 L 80 200 L 100 120 L 0 120 L 120 0 Z'
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 30 50 Q 40 -20 120 10 Q 180 -10 180 40 Q 210 70 190 100 C 210 140 180 170 160 170 Q 140 210 100 180 C 70 210 20 190 30 150 C -10 140 -10 80 30 50',
+        pptxShapeType: 'cloud',
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 100 0 L 0 100 L 100 200 L 200 100 L 100 0 Z M 200 100 L 0 100',
+        withborder: true,
+        pptxShapeType: 'flowChartSort',
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 100 0 A 50 50 0 1 1 100 200 A 50 50 0 1 1 100 0 Z M 170 30 L 30 170',
+        withborder: true,
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 100 0 A 50 50 0 1 1 100 200 A 50 50 0 1 1 100 0 Z M 30 30 L 170 170',
+        withborder: true,
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 100 0 A 50 50 0 1 1 100 200 A 50 50 0 1 1 100 0 Z M 170 30 L 30 170 M 30 30 L 170 170',
+        withborder: true,
+        pptxShapeType: 'flowChartSummingJunction',
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 100 0 A 50 50 0 1 1 100 200 A 50 50 0 1 1 100 0 Z M 200 100 L 0 100 M 100 0 L 100 200',
+        withborder: true,
+        pptxShapeType: 'flowChartOr',
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 160 0 A 40 100 0 1 1 160 200 L 40 200 A 40 100 0 1 1 40 0 L 160 0 Z M 160 200 A 40 100 0 1 1 160 0',
+        withborder: true,
+        pptxShapeType: 'flowChartMagneticDrum',
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 0 40 A 50 20 0 1 1 200 40 L 200 160 A 50 20 0 1 1 0 160 L 0 40 Z M 200 40 A 50 20 0 1 1 0 40',
+        withborder: true,
+        pptxShapeType: 'can',
+      },
+      {
+        viewBox: [200, 200],
+        path: 'M 200 0 L 50 0 L 0 50 L 0 200 L 150 200 L 200 150 L 200 0 Z M 200 0 L 150 50 M 150 50 L 0 50 M 150 50 L 150 200',
+        withborder: true,
+        pptxShapeType: 'cube',
       },
     ],
   },
@@ -556,7 +671,8 @@ export const SHAPE_LIST: ShapeListItem[] = [
       },
       {
         viewBox: [200, 200],
-        path: 'M 100 0 L 60 40 L 80 40 L 80 80 L 40 80 L 40 60 L 0 100 L 40 140 L 40 120 L 80 120 L 80 160 L 60 160 L 100 200 L 140 160 L 120 160 L 120 120 L 160 120 L 160 140 L 200 100 L 160 60 L 160 80 L 120 80 L 120 40 L 140 40 L 100 0 Z'
+        path: 'M 100 0 L 60 40 L 80 40 L 80 80 L 40 80 L 40 60 L 0 100 L 40 140 L 40 120 L 80 120 L 80 160 L 60 160 L 100 200 L 140 160 L 120 160 L 120 120 L 160 120 L 160 140 L 200 100 L 160 60 L 160 80 L 120 80 L 120 40 L 140 40 L 100 0 Z',
+        pptxShapeType: 'quadArrow',
       },
       {
         viewBox: [200, 200],
@@ -569,11 +685,13 @@ export const SHAPE_LIST: ShapeListItem[] = [
       },
       {
         viewBox: [200, 200],
-        path: 'M 0 100 L 80 20 L 80 80 L 120 80 L 120 0 L 200 0 L 200 200 L 120 200 L 120 120 L 80 120 L 80 180 L 0 100 Z'
+        path: 'M 0 100 L 80 20 L 80 80 L 120 80 L 120 0 L 200 0 L 200 200 L 120 200 L 120 120 L 80 120 L 80 180 L 0 100 Z',
+        pptxShapeType: 'leftArrowCallout',
       },
       {
         viewBox: [200, 200],
         path: 'M 200 100 L 120 20 L 120 80 L 80 80 L 80 0 L 0 0 L 0 200 L 80 200 L 80 120 L 120 120 L 120 180 L 200 100 Z',
+        pptxShapeType: 'rightArrowCallout',
       },
       {
         viewBox: [200, 200],
@@ -611,7 +729,8 @@ export const SHAPE_LIST: ShapeListItem[] = [
       },
       {
         viewBox: [200, 200],
-        path: 'M 0 200 L 180 200 L 180 40 L 200 40 L 160 0 L 120 40 L 140 40 L 140 160 L 0 160 L 0 200 Z'
+        path: 'M 0 200 L 180 200 L 180 40 L 200 40 L 160 0 L 120 40 L 140 40 L 140 160 L 0 160 L 0 200 Z',
+        pptxShapeType: 'bentUpArrow',
       },
       {
         viewBox: [200, 200],
@@ -619,7 +738,8 @@ export const SHAPE_LIST: ShapeListItem[] = [
       },
       {
         viewBox: [200, 200],
-        path: 'M 40 180 L 180 180 L 180 40 L 200 40 L 160 0 L 120 40 L 140 40 L 140 140 L 40 140 L 40 120 L 0 160 L 40 200 L 40 180 Z'
+        path: 'M 40 180 L 180 180 L 180 40 L 200 40 L 160 0 L 120 40 L 140 40 L 140 140 L 40 140 L 40 120 L 0 160 L 40 200 L 40 180 Z',
+        pptxShapeType: 'leftUpArrow',
       },
       {
         viewBox: [1024, 1024],

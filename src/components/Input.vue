@@ -4,6 +4,7 @@
     :class="{
       'disabled': disabled,
       'focused': focused,
+      'simple': simple,
     }"
   >
     <span class="prefix">
@@ -34,9 +35,11 @@ withDefaults(defineProps<{
   value: string
   disabled?: boolean
   placeholder?: string
+  simple?: boolean
 }>(), {
   disabled: false,
   placeholder: '',
+  simple: false,
 })
 
 const emit = defineEmits<{
@@ -108,6 +111,14 @@ defineExpose({
     background-color: #f5f5f5;
     border-color: #dcdcdc;
     color: #b7b7b7;
+
+    input {
+      color: #b7b7b7;
+    }
+  }
+
+  &.simple {
+    border: 0;
   }
 
   .prefix, .suffix {

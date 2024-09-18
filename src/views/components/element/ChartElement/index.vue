@@ -32,11 +32,9 @@
           :height="elementInfo.height"
           :type="elementInfo.chartType"
           :data="elementInfo.data"
+          :themeColors="elementInfo.themeColors"
+          :textColor="elementInfo.textColor"
           :options="elementInfo.options"
-          :themeColor="elementInfo.themeColor"
-          :gridColor="elementInfo.gridColor"
-          :legends="elementInfo.data.legends"
-          :legend="elementInfo.legend || ''"
         />
       </div>
     </div>

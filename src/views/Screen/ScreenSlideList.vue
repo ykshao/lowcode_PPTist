@@ -39,7 +39,6 @@ import { computed, provide } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
 import { injectKeySlideScale } from '@/types/injectKey'
-import { VIEWPORT_SIZE } from '@/configs/canvas'
 import { SLIDE_ANIMATIONS } from '@/configs/animation'
 
 import ScreenSlide from './ScreenSlide.vue'
@@ -52,7 +51,7 @@ const props = defineProps<{
   manualExitFullscreen: () => void
 }>()
 
-const { slides, slideIndex } = storeToRefs(useSlidesStore())
+const { slides, slideIndex, viewportSize } = storeToRefs(useSlidesStore())
 
 const slidesWithTurningMode = computed(() => {
   return slides.value.map(slide => {
@@ -69,7 +68,7 @@ const slidesWithTurningMode = computed(() => {
   })
 })
 
-const scale = computed(() => props.slideWidth / VIEWPORT_SIZE)
+const scale = computed(() => props.slideWidth / viewportSize.value)
 provide(injectKeySlideScale, scale)
 </script>
 

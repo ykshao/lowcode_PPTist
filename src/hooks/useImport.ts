@@ -5,27 +5,35 @@ import { nanoid } from 'nanoid'
 import { useSlidesStore } from '@/store'
 import { decrypt } from '@/utils/crypto'
 import { type ShapePoolItem, SHAPE_LIST, SHAPE_PATH_FORMULAS } from '@/configs/shapes'
-import { VIEWPORT_SIZE } from '@/configs/canvas'
 import useAddSlidesOrElements from '@/hooks/useAddSlidesOrElements'
+import useSlideHandler from '@/hooks/useSlideHandler'
 import message from '@/utils/message'
+import { getSvgPathRange } from '@/utils/svgPathParser'
 import type {
   Slide,
   TableCellStyle,
   TableCell,
   ChartType,
-  ChartOptions,
   SlideBackground,
   PPTShapeElement,
   PPTLineElement,
   ShapeTextAlign,
   PPTTextElement,
+  ChartOptions,
 } from '@/types/slides'
+
+const convertFontSizePtToPx = (html: string, ratio: number) => {
+  return html.replace(/font-size:\s*([\d.]+)pt/g, (match, p1) => {
+    return `font-size: ${(parseFloat(p1) * ratio).toFixed(1)}px`
+  })
+}
 
 export default () => {
   const slidesStore = useSlidesStore()
   const { theme } = storeToRefs(useSlidesStore())
 
-  const { addSlidesFromData, isEmptySlide } = useAddSlidesOrElements()
+  const { addSlidesFromData } = useAddSlidesOrElements()
+  const { isEmptySlide } = useSlideHandler()
 
   const exporting = ref(false)
 
@@ -37,7 +45,10 @@ export default () => {
     reader.addEventListener('load', () => {
       try {
         const slides = JSON.parse(decrypt(reader.result as string))
-        if (cover) slidesStore.setSlides(slides)
+        if (cover) {
+          slidesStore.updateSlideIndex(0)
+          slidesStore.setSlides(slides)
+        }
         else if (isEmptySlide.value) slidesStore.setSlides(slides)
         else addSlidesFromData(slides)
       }
@@ -48,7 +59,7 @@ export default () => {
     reader.readAsText(file)
   }
 
-  const parseLineElement = (el: Shape): PPTLineElement => {
+  const parseLineElement = (el: Shape) => {
     let start: [number, number] = [0, 0]
     let end: [number, number] = [0, 0]
 
@@ -68,7 +79,8 @@ export default () => {
       start = [el.width, 0]
       end = [0, el.height]
     }
-    return {
+
+    const data: PPTLineElement = {
       type: 'line',
       id: nanoid(10),
       width: el.borderWidth || 1,
@@ -76,10 +88,18 @@ export default () => {
       top: el.top,
       start,
       end,
-      style: el.borderType === 'solid' ? 'solid' : 'dashed',
+      style: el.borderType,
       color: el.borderColor,
-      points: ['', el.shapType === 'straightConnector1' ? 'arrow' : '']
+      points: ['', /straightConnector/.test(el.shapType) ? 'arrow' : '']
     }
+    if (/bentConnector/.test(el.shapType)) {
+      data.broken2 = [
+        Math.abs(start[0] - end[0]) / 2,
+        Math.abs(start[1] - end[1]) / 2,
+      ]
+    }
+
+    return data
   }
 
   // 导入PPTX文件
@@ -96,13 +116,12 @@ export default () => {
     
     const reader = new FileReader()
     reader.onload = async e => {
-      const json = await parse(e.target!.result as ArrayBuffer, {
-        slideFactor: 75 / 914400,
-        fontsizeFactor: 100 / 98,
-      })
+      const json = await parse(e.target!.result as ArrayBuffer)
 
+      const ratio = 96 / 72
       const width = json.size.width
-      const scale = VIEWPORT_SIZE / width
+
+      slidesStore.setViewportSize(width * ratio)
 
       const slides: Slide[] = []
       for (const item of json.slides) {
@@ -111,16 +130,23 @@ export default () => {
         if (type === 'image') {
           background = {
             type: 'image',
-            image: value.picBase64,
-            imageSize: 'cover',
+            image: {
+              src: value.picBase64,
+              size: 'cover',
+            },
           }
         }
         else if (type === 'gradient') {
           background = {
             type: 'gradient',
-            gradientType: 'linear',
-            gradientColor: [value.colors[0].color, value.colors[value.colors.length - 1].color],
-            gradientRotate: value.rot,
+            gradient: {
+              type: 'linear',
+              colors: value.colors.map(item => ({
+                ...item,
+                pos: parseInt(item.pos),
+              })),
+              rotate: value.rot,
+            },
           }
         }
         else {
@@ -143,10 +169,10 @@ export default () => {
             const originLeft = el.left
             const originTop = el.top
 
-            el.width = el.width * scale
-            el.height = el.height * scale
-            el.left = el.left * scale
-            el.top = el.top * scale
+            el.width = el.width * ratio
+            el.height = el.height * ratio
+            el.left = el.left * ratio
+            el.top = el.top * ratio
   
             if (el.type === 'text') {
               const textEl: PPTTextElement = {
@@ -159,17 +185,24 @@ export default () => {
                 rotate: el.rotate,
                 defaultFontName: theme.value.fontName,
                 defaultColor: theme.value.fontColor,
-                content: el.content,
+                content: convertFontSizePtToPx(el.content, ratio),
                 lineHeight: 1,
                 outline: {
                   color: el.borderColor,
                   width: el.borderWidth,
-                  style: el.borderType === 'solid' ? 'solid' : 'dashed',
+                  style: el.borderType,
                 },
                 fill: el.fillColor,
                 vertical: el.isVertical,
               }
-              if (el.shadow) textEl.shadow = el.shadow
+              if (el.shadow) {
+                textEl.shadow = {
+                  h: el.shadow.h * ratio,
+                  v: el.shadow.v * ratio,
+                  blur: el.shadow.blur * ratio,
+                  color: el.shadow.color,
+                }
+              }
               slide.elements.push(textEl)
             }
             else if (el.type === 'image') {
@@ -245,10 +278,10 @@ export default () => {
                   outline: {
                     color: el.borderColor,
                     width: el.borderWidth,
-                    style: el.borderType === 'solid' ? 'solid' : 'dashed',
+                    style: el.borderType,
                   },
                   text: {
-                    content: el.content,
+                    content: convertFontSizePtToPx(el.content, ratio),
                     defaultFontName: theme.value.fontName,
                     defaultColor: theme.value.fontColor,
                     align: vAlignMap[el.vAlign] || 'middle',
@@ -256,7 +289,14 @@ export default () => {
                   flipH: el.isFlipH,
                   flipV: el.isFlipV,
                 }
-                if (el.shadow) element.shadow = el.shadow
+                if (el.shadow) {
+                  element.shadow = {
+                    h: el.shadow.h * ratio,
+                    v: el.shadow.v * ratio,
+                    blur: el.shadow.blur * ratio,
+                    color: el.shadow.color,
+                  }
+                }
     
                 if (shape) {
                   element.path = shape.path
@@ -267,20 +307,25 @@ export default () => {
                     element.viewBox = [el.width, el.height]
     
                     const pathFormula = SHAPE_PATH_FORMULAS[shape.pathFormula]
-                    if ('editable' in pathFormula) {
+                    if ('editable' in pathFormula && pathFormula.editable) {
                       element.path = pathFormula.formula(el.width, el.height, pathFormula.defaultValue)
-                      element.keypoint = pathFormula.defaultValue
+                      element.keypoints = pathFormula.defaultValue
                     }
                     else element.path = pathFormula.formula(el.width, el.height)
                   }
                 }
                 if (el.shapType === 'custom') {
-                  element.special = true
-                  element.path = el.path!
-                  element.viewBox = [originWidth, originHeight]
+                  if (el.path!.indexOf('NaN') !== -1) element.path = ''
+                  else {
+                    element.special = true
+                    element.path = el.path!
+  
+                    const { maxX, maxY } = getSvgPathRange(element.path)
+                    element.viewBox = [maxX || originWidth, maxY || originHeight]
+                  }
                 }
     
-                slide.elements.push(element)
+                if (element.path) slide.elements.push(element)
               }
             }
             else if (el.type === 'table') {
@@ -301,8 +346,11 @@ export default () => {
                   textDiv.innerHTML = cellData.text
                   const p = textDiv.querySelector('p')
                   const align = p?.style.textAlign || 'left'
-                  const fontsize = p?.style.fontSize || ''
-                  const fontname = p?.style.fontFamily || ''
+
+                  const span = textDiv.querySelector('span')
+                  const fontsize = span?.style.fontSize ? (parseInt(span?.style.fontSize) * ratio).toFixed(1) + 'px' : ''
+                  const fontname = span?.style.fontFamily || ''
+                  const color = span?.style.color || cellData.fontColor
 
                   rowCells.push({
                     id: nanoid(10),
@@ -314,6 +362,9 @@ export default () => {
                       align: ['left', 'right', 'center'].includes(align) ? (align as 'left' | 'right' | 'center') : 'left',
                       fontsize,
                       fontname,
+                      color,
+                      bold: cellData.fontBold,
+                      backcolor: cellData.fillColor,
                     },
                   })
                   textDiv = null
@@ -334,16 +385,9 @@ export default () => {
                 rotate: 0,
                 data,
                 outline: {
-                  width: 2,
-                  style: 'solid',
-                  color: '#eeece1',
-                },
-                theme: {
-                  color: el.themeColor,
-                  rowHeader: true,
-                  rowFooter: false,
-                  colHeader: false,
-                  colFooter: false,
+                  width: el.borderWidth || 2,
+                  style: el.borderType,
+                  color: el.borderColor || '#eeece1',
                 },
                 cellMinHeight: 36,
               })
@@ -354,10 +398,9 @@ export default () => {
               let series: number[][]
   
               if (el.chartType === 'scatterChart' || el.chartType === 'bubbleChart') {
-                const data = el.data
-                labels = data[0].map(item => item + '')
-                legends = ['系列1']
-                series = [data[1]]
+                labels = el.data[0].map((item, index) => `坐标${index + 1}`)
+                legends = ['X', 'Y']
+                series = el.data
               }
               else {
                 const data = el.data as ChartItem[]
@@ -365,7 +408,7 @@ export default () => {
                 legends = data.map(item => item.key)
                 series = data.map(item => item.values.map(v => v.y))
               }
-  
+
               const options: ChartOptions = {}
   
               let chartType: ChartType = 'bar'
@@ -374,24 +417,32 @@ export default () => {
                 case 'barChart':
                 case 'bar3DChart':
                   chartType = 'bar'
-                  if (el.barDir === 'bar') options.horizontalBars = true
-                  if (el.grouping === 'stacked' || el.grouping === 'percentStacked') options.stackBars = true
+                  if (el.barDir === 'bar') chartType = 'column'
+                  if (el.grouping === 'stacked' || el.grouping === 'percentStacked') options.stack = true
                   break
                 case 'lineChart':
                 case 'line3DChart':
+                  if (el.grouping === 'stacked' || el.grouping === 'percentStacked') options.stack = true
+                  chartType = 'line'
+                  break
                 case 'areaChart':
                 case 'area3DChart':
+                  if (el.grouping === 'stacked' || el.grouping === 'percentStacked') options.stack = true
+                  chartType = 'area'
+                  break
                 case 'scatterChart':
                 case 'bubbleChart':
-                  chartType = 'line'
-                  if (el.chartType === 'areaChart' || el.chartType === 'area3DChart') options.showArea = true
-                  if (el.chartType === 'scatterChart' || el.chartType === 'bubbleChart') options.showLine = false
+                  chartType = 'scatter'
                   break
                 case 'pieChart':
                 case 'pie3DChart':
-                case 'doughnutChart':
                   chartType = 'pie'
-                  if (el.chartType === 'doughnutChart') options.donut = true
+                  break
+                case 'radarChart':
+                  chartType = 'radar'
+                  break
+                case 'doughnutChart':
+                  chartType = 'ring'
                   break
                 default:
               }
@@ -405,8 +456,8 @@ export default () => {
                 left: el.left,
                 top: el.top,
                 rotate: 0,
-                themeColor: [theme.value.themeColor],
-                gridColor: theme.value.fontColor,
+                themeColors: [theme.value.themeColor],
+                textColor: theme.value.fontColor,
                 data: {
                   labels,
                   legends,
@@ -428,8 +479,8 @@ export default () => {
         parseElements(item.elements)
         slides.push(slide)
       }
-      if (isEmptySlide.value) slidesStore.setSlides(slides)
-      else addSlidesFromData(slides)
+      slidesStore.updateSlideIndex(0)
+      slidesStore.setSlides(slides)
       exporting.value = false
     }
     reader.readAsArrayBuffer(file)

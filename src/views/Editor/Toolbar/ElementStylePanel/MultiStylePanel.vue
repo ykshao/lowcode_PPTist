@@ -20,10 +20,11 @@
       <Select 
         style="width: 60%;" 
         :value="outline.style || ''"
-        @update:value="value => updateOutline({ style: value as 'solid' | 'dashed' })"
+        @update:value="value => updateOutline({ style: value as 'solid' | 'dashed' | 'dotted' })"
         :options="[
           { label: '实线边框', value: 'solid' },
           { label: '虚线边框', value: 'dashed' },
+          { label: '点线边框', value: 'dotted' },
         ]"
       />
     </div>
@@ -54,6 +55,8 @@
       <Select
         style="width: 60%;;"
         :value="richTextAttrs.fontname"
+        search
+        searchLabel="搜索字体"
         @update:value="value => updateFontStyle('fontname', value as string)"
         :options="[
           ...availableFonts,
@@ -67,6 +70,8 @@
       <Select
         style="width: 40%;"
         :value="richTextAttrs.fontsize"
+        search
+        searchLabel="搜索字号"
         @update:value="value => updateFontStyle('fontsize', value as string)"
         :options="fontSizeOptions.map(item => ({
           label: item, value: item
@@ -137,8 +142,8 @@ import emitter, { EmitterEvents } from '@/utils/emitter'
 import { WEB_FONTS } from '@/configs/font'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
-import ColorButton from '../common/ColorButton.vue'
-import TextColorButton from '../common/TextColorButton.vue'
+import ColorButton from '@/components/ColorButton.vue'
+import TextColorButton from '@/components/TextColorButton.vue'
 import ColorPicker from '@/components/ColorPicker/index.vue'
 import Divider from '@/components/Divider.vue'
 import Button from '@/components/Button.vue'

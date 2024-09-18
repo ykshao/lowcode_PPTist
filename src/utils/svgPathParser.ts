@@ -1,97 +1,5 @@
-// @ts-ignore
 import { SVGPathData } from 'svg-pathdata'
 import arcToBezier from 'svg-arc-to-cubic-bezier'
-
-type CommandM = {
-  relative: boolean
-  type: typeof SVGPathData.MOVE_TO
-  x: number
-  y: number
-}
-type CommandL = {
-  relative: boolean
-  type: typeof SVGPathData.LINE_TO
-  x: number
-  y: number
-}
-type CommandH = {
-  relative: boolean
-  type: typeof SVGPathData.HORIZ_LINE_TO
-  x: number
-}
-type CommandV = {
-  relative: boolean
-  type: typeof SVGPathData.VERT_LINE_TO
-  y: number
-}
-type CommandZ = {
-  type: typeof SVGPathData.CLOSE_PATH
-}
-type CommandQ = {
-  relative: boolean
-  type: typeof SVGPathData.QUAD_TO
-  x1: number
-  y1: number
-  x: number
-  y: number
-}
-type CommandT = {
-  relative: boolean
-  type: typeof SVGPathData.SMOOTH_QUAD_TO
-  x: number
-  y: number
-}
-type CommandC = {
-  relative: boolean
-  type: typeof SVGPathData.CURVE_TO
-  x1: number
-  y1: number
-  x2: number
-  y2: number
-  x: number
-  y: number
-}
-type CommandS = {
-  relative: boolean
-  type: typeof SVGPathData.SMOOTH_CURVE_TO
-  x2: number
-  y2: number
-  x: number
-  y: number
-}
-type CommandA = {
-  relative: boolean
-  type: typeof SVGPathData.ARC
-  rX: number
-  rY: number
-  xRot: number
-  sweepFlag: 0 | 1
-  lArcFlag: 0 | 1
-  x: number
-  y: number
-  cX?: number
-  cY?: number
-  phi1?: number
-  phi2?: number
-}
-type SVGCommand = CommandM | CommandL | CommandH | CommandV | CommandZ | CommandQ | CommandT | CommandC | CommandS | CommandA
-
-declare class SVGPathData {
-  commands: SVGCommand[]
-  constructor(content: string | SVGCommand[])
-  static readonly CLOSE_PATH: 1
-  static readonly MOVE_TO: 2
-  static readonly HORIZ_LINE_TO: 4
-  static readonly VERT_LINE_TO: 8
-  static readonly LINE_TO: 16
-  static readonly CURVE_TO: 32
-  static readonly SMOOTH_CURVE_TO: 64
-  static readonly QUAD_TO: 128
-  static readonly SMOOTH_QUAD_TO: 256
-  static readonly ARC: 512
-  static readonly LINE_COMMANDS: number
-  static readonly DRAWING_COMMANDS: number
-}
 
 const typeMap = {
   1: 'Z',
@@ -205,6 +113,34 @@ export const toPoints = (d: string) => {
     else continue
   }
   return points
+}
+
+export const getSvgPathRange = (path: string) => {
+  try {
+    const pathData = new SVGPathData(path)
+    const xList = []
+    const yList = []
+    for (const item of pathData.commands) {
+      const x = ('x' in item) ? item.x : 0
+      const y = ('y' in item) ? item.y : 0
+      xList.push(x)
+      yList.push(y)
+    }
+    return {
+      minX: Math.min(...xList),
+      minY: Math.min(...yList),
+      maxX: Math.max(...xList),
+      maxY: Math.max(...yList),
+    }
+  }
+  catch {
+    return {
+      minX: 0,
+      minY: 0,
+      maxX: 0,
+      maxY: 0,
+    }
+  }
 }
 
 export type SvgPoints = ReturnType<typeof toPoints>

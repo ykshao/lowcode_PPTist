@@ -9,6 +9,7 @@
         :options="[
           { label: '实线', value: 'solid' },
           { label: '虚线', value: 'dashed' },
+          { label: '点线', value: 'dotted' },
         ]"
       />
     </div>
@@ -61,6 +62,12 @@
     </div>
 
     <Divider />
+
+    <div class="row">
+      <Button style="flex: 1;" @click="updateLine({ start: handleLineElement.end, end: handleLineElement.start })"><IconSwitch /> 交换方向</Button>
+    </div>
+
+    <Divider />
     <ElementShadow />
   </div>
 </template>
@@ -73,7 +80,8 @@ import type { PPTLineElement } from '@/types/slides'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 import ElementShadow from '../common/ElementShadow.vue'
-import ColorButton from '../common/ColorButton.vue'
+import Button from '@/components/Button.vue'
+import ColorButton from '@/components/ColorButton.vue'
 import ColorPicker from '@/components/ColorPicker/index.vue'
 import Divider from '@/components/Divider.vue'
 import NumberInput from '@/components/NumberInput.vue'

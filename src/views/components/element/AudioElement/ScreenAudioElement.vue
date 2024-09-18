@@ -41,7 +41,6 @@ import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
 import type { PPTAudioElement } from '@/types/slides'
 import { injectKeySlideId, injectKeySlideScale } from '@/types/injectKey'
-import { VIEWPORT_SIZE } from '@/configs/canvas'
 
 import AudioPlayer from './AudioPlayer.vue'
 
@@ -49,7 +48,7 @@ const props = defineProps<{
   elementInfo: PPTAudioElement
 }>()
 
-const { viewportRatio, currentSlide } = storeToRefs(useSlidesStore())
+const { viewportRatio, currentSlide, viewportSize } = storeToRefs(useSlidesStore())
 
 const scale = inject(injectKeySlideScale) || ref(1)
 const slideId = inject(injectKeySlideId) || ref('')
@@ -60,8 +59,8 @@ const audioIconSize = computed(() => {
   return Math.min(props.elementInfo.width, props.elementInfo.height) + 'px'
 })
 const audioPlayerPosition = computed(() => {
-  const canvasWidth = VIEWPORT_SIZE
-  const canvasHeight = VIEWPORT_SIZE * viewportRatio.value
+  const canvasWidth = viewportSize.value
+  const canvasHeight = viewportSize.value * viewportRatio.value
 
   const audioWidth = 280 / scale.value
   const audioHeight = 50 / scale.value

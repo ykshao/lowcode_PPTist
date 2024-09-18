@@ -142,13 +142,37 @@ export default () => {
   const sortSlides = (newIndex: number, oldIndex: number) => {
     if (oldIndex === newIndex) return
   
-    const _slides = JSON.parse(JSON.stringify(slides.value))
+    const _slides: Slide[] = JSON.parse(JSON.stringify(slides.value))
+
+    const movingSlide = _slides[oldIndex]
+    const movingSlideSection = movingSlide.sectionTag
+    if (movingSlideSection) {
+      const movingSlideSectionNext = _slides[oldIndex + 1]
+      delete movingSlide.sectionTag
+      if (movingSlideSectionNext && !movingSlideSectionNext.sectionTag) {
+        movingSlideSectionNext.sectionTag = movingSlideSection
+      }
+    }
+    if (newIndex === 0) {
+      const firstSection = _slides[0].sectionTag
+      if (firstSection) {
+        delete _slides[0].sectionTag
+        movingSlide.sectionTag = firstSection
+      }
+    }
+
     const _slide = _slides[oldIndex]
     _slides.splice(oldIndex, 1)
     _slides.splice(newIndex, 0, _slide)
     slidesStore.setSlides(_slides)
     slidesStore.updateSlideIndex(newIndex)
   }
+
+  const isEmptySlide = computed(() => {
+    if (slides.value.length > 1) return false
+    if (slides.value[0].elements.length > 0) return false
+    return true
+  })
 
   return {
     resetSlides,
@@ -162,5 +186,6 @@ export default () => {
     cutSlide,
     selectAllSlide,
     sortSlides,
+    isEmptySlide,
   }
 }

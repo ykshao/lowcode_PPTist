@@ -5,6 +5,8 @@
         class="font-select"
         style="width: 60%;"
         :value="richTextAttrs.fontname"
+        search
+        searchLabel="搜索字体"
         @update:value="value => emitRichTextCommand('fontname', value as string)"
         :options="[
           ...availableFonts,
@@ -18,6 +20,8 @@
       <Select
         style="width: 40%;"
         :value="richTextAttrs.fontsize"
+        search
+        searchLabel="搜索字号"
         @update:value="value => emitRichTextCommand('fontsize', value as string)"
         :options="fontSizeOptions.map(item => ({
           label: item, value: item
@@ -253,7 +257,7 @@ import { WEB_FONTS } from '@/configs/font'
 import useTextFormatPainter from '@/hooks/useTextFormatPainter'
 import message from '@/utils/message'
 
-import TextColorButton from '../common/TextColorButton.vue'
+import TextColorButton from '@/components/TextColorButton.vue'
 import CheckboxButton from '@/components/CheckboxButton.vue'
 import ColorPicker from '@/components/ColorPicker/index.vue'
 import Input from '@/components/Input.vue'
@@ -369,14 +373,14 @@ const removeLink = () => {
   height: 12px;
   position: relative;
   font-size: 12px;
-  top: -5px;
+  top: -3px;
 
   span {
     width: 100%;
     height: 2px;
     display: inline-block;
     position: absolute;
-    top: 10px;
+    top: 8px;
     background-color: #666;
   }
 }

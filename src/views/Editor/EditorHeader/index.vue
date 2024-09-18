@@ -19,7 +19,7 @@
           <PopoverMenuItem @click="resetSlides(); mainMenuVisible = false">重置幻灯片</PopoverMenuItem>
           <PopoverMenuItem @click="goLink('https://github.com/pipipi-pikachu/PPTist/issues')">意见反馈</PopoverMenuItem>
           <PopoverMenuItem @click="goLink('https://github.com/pipipi-pikachu/PPTist/blob/master/doc/Q&A.md')">常见问题</PopoverMenuItem>
-          <PopoverMenuItem @click="mainMenuVisible = false; hotkeyDrawerVisible = true">快捷键</PopoverMenuItem>
+          <PopoverMenuItem @click="mainMenuVisible = false; hotkeyDrawerVisible = true">快捷操作</PopoverMenuItem>
         </template>
         <div class="menu-item"><IconHamburgerButton class="icon" /></div>
       </Popover>
@@ -43,7 +43,7 @@
 
     <div class="right">
       <div class="group-menu-item">
-        <div class="menu-item" v-tooltip="'幻灯片放映'" @click="enterScreening()">
+        <div class="menu-item" v-tooltip="'幻灯片放映（F5）'" @click="enterScreening()">
           <IconPpt class="icon" />
         </div>
         <Popover trigger="click" center>
@@ -68,6 +68,7 @@
       placement="right"
     >
       <HotkeyDoc />
+      <template v-slot:title>快捷操作</template>
     </Drawer>
 
     <FullscreenSpin :loading="exporting" tip="正在导入..." />
@@ -181,7 +182,7 @@ const setDialogForExport = (type: DialogForExportTypes) => {
   }
 }
 .title {
-  height: 32px;
+  height: 30px;
   margin-left: 2px;
   font-size: 13px;
 
@@ -190,11 +191,16 @@ const setDialogForExport = (type: DialogForExportTypes) => {
     height: 100%;
     padding-left: 0;
     padding-right: 0;
+
+    ::v-deep(input) {
+      height: 28px;
+      line-height: 28px;
+    }
   }
   .title-text {
     min-width: 20px;
     max-width: 400px;
-    line-height: 32px;
+    line-height: 30px;
     padding: 0 6px;
     border-radius: $borderRadius;
     cursor: pointer;

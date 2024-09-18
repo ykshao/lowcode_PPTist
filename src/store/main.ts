@@ -50,7 +50,7 @@ export const useMainStore = defineStore('main', {
     activeGroupElementId: '', // 组合元素成员中，被选中可独立操作的元素ID
     hiddenElementIdList: [], // 被隐藏的元素ID集合
     canvasPercentage: 90, // 画布可视区域百分比
-    canvasScale: 1, // 画布缩放比例（基于宽度1000px）
+    canvasScale: 1, // 画布缩放比例（基于宽度{{slidesStore.viewportSize}}像素）
     canvasDragged: false, // 画布被拖拽移动
     thumbnailsFocus: false, // 左侧导航缩略图区域聚焦
     editorAreaFocus: false, //  编辑区域聚焦

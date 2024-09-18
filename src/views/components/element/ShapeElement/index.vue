@@ -40,8 +40,7 @@
             <GradientDefs
               :id="`editabel-gradient-${elementInfo.id}`" 
               :type="elementInfo.gradient.type"
-              :color1="elementInfo.gradient.color[0]"
-              :color2="elementInfo.gradient.color[1]"
+              :colors="elementInfo.gradient.colors"
               :rotate="elementInfo.gradient.rotate"
             />
           </defs>
@@ -71,7 +70,7 @@
             :defaultFontName="text.defaultFontName"
             :editable="!elementInfo.lock"
             :value="text.content"
-            @update="value => updateText(value)"
+            @update="({ value, ignore }) => updateText(value, ignore)"
             @blur="checkEmptyText()"
             @mousedown="$event => handleSelectElement($event, false)"
           />
@@ -157,14 +156,14 @@ const text = computed<ShapeText>(() => {
   return props.elementInfo.text
 })
 
-const updateText = (content: string) => {
+const updateText = (content: string, ignore = false) => {
   const _text = { ...text.value, content }
   slidesStore.updateElement({
     id: props.elementInfo.id, 
     props: { text: _text },
   })
   
-  addHistorySnapshot()
+  if (!ignore) addHistorySnapshot()
 }
 
 const checkEmptyText = () => {

@@ -37,7 +37,6 @@ import useSlideHandler from '@/hooks/useSlideHandler'
 import useCreateElement from '@/hooks/useCreateElement'
 import { getImageDataURL } from '@/utils/image'
 import type { ShapePoolItem } from '@/configs/shapes'
-import { VIEWPORT_SIZE } from '@/configs/canvas'
 
 import MobileThumbnails from '../MobileThumbnails.vue'
 import FileInput from '@/components/FileInput.vue'
@@ -45,7 +44,7 @@ import Button from '@/components/Button.vue'
 import ButtonGroup from '@/components/ButtonGroup.vue'
 
 const slidesStore = useSlidesStore()
-const { viewportRatio, currentSlide } = storeToRefs(slidesStore)
+const { viewportRatio, currentSlide, viewportSize } = storeToRefs(slidesStore)
 
 const { createSlide, copyAndPasteSlide, deleteSlide, } = useSlideHandler()
 const { createTextElement, createImageElement, createShapeElement } = useCreateElement()
@@ -55,8 +54,8 @@ const insertTextElement = () => {
   const height = 56
 
   createTextElement({
-    left: (VIEWPORT_SIZE - width) / 2,
-    top: (VIEWPORT_SIZE * viewportRatio.value - height) / 2,
+    left: (viewportSize.value - width) / 2,
+    top: (viewportSize.value * viewportRatio.value - height) / 2,
     width,
     height,
   }, { content: '<p>新添加文本</p>' })
@@ -81,8 +80,8 @@ const insertShapeElement = (type: 'square' | 'round') => {
   const size = 200
 
   createShapeElement({
-    left: (VIEWPORT_SIZE - size) / 2,
-    top: (VIEWPORT_SIZE * viewportRatio.value - size) / 2,
+    left: (viewportSize.value - size) / 2,
+    top: (viewportSize.value * viewportRatio.value - size) / 2,
     width: size,
     height: size,
   }, shape[type])

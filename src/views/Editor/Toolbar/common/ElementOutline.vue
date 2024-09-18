@@ -15,10 +15,11 @@
         <Select 
           style="width: 60%;" 
           :value="outline.style || ''" 
-          @update:value="value => updateOutline({ style: value as 'dashed' | 'solid' })"
+          @update:value="value => updateOutline({ style: value as 'dashed' | 'solid' | 'dotted' })"
           :options="[
             { label: '实线边框', value: 'solid' },
             { label: '虚线边框', value: 'dashed' },
+            { label: '点线边框', value: 'dotted' },
           ]"
         />
       </div>
@@ -53,7 +54,7 @@ import { useMainStore, useSlidesStore } from '@/store'
 import type { PPTElementOutline } from '@/types/slides'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
-import ColorButton from './ColorButton.vue'
+import ColorButton from '@/components/ColorButton.vue'
 import ColorPicker from '@/components/ColorPicker/index.vue'
 import Switch from '@/components/Switch.vue'
 import NumberInput from '@/components/NumberInput.vue'

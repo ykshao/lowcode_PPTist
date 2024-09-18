@@ -1,7 +1,6 @@
 import { ref, computed, onMounted, onUnmounted, watch, type Ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
-import { VIEWPORT_SIZE } from '@/configs/canvas'
 
 export default (canvasRef: Ref<HTMLElement | undefined>) => {
   const viewportLeft = ref(0)
@@ -9,7 +8,7 @@ export default (canvasRef: Ref<HTMLElement | undefined>) => {
 
   const mainStore = useMainStore()
   const { canvasPercentage, canvasDragged } = storeToRefs(mainStore)
-  const { viewportRatio } = storeToRefs(useSlidesStore())
+  const { viewportRatio, viewportSize } = storeToRefs(useSlidesStore())
 
   // 初始化画布可视区域的位置
   const initViewportPosition = () => {
@@ -19,13 +18,13 @@ export default (canvasRef: Ref<HTMLElement | undefined>) => {
 
     if (canvasHeight / canvasWidth > viewportRatio.value) {
       const viewportActualWidth = canvasWidth * (canvasPercentage.value / 100)
-      mainStore.setCanvasScale(viewportActualWidth / VIEWPORT_SIZE)
+      mainStore.setCanvasScale(viewportActualWidth / viewportSize.value)
       viewportLeft.value = (canvasWidth - viewportActualWidth) / 2
       viewportTop.value = (canvasHeight - viewportActualWidth * viewportRatio.value) / 2
     }
     else {
       const viewportActualHeight = canvasHeight * (canvasPercentage.value / 100)
-      mainStore.setCanvasScale(viewportActualHeight / (VIEWPORT_SIZE * viewportRatio.value))
+      mainStore.setCanvasScale(viewportActualHeight / (viewportSize.value * viewportRatio.value))
       viewportLeft.value = (canvasWidth - viewportActualHeight / viewportRatio.value) / 2
       viewportTop.value = (canvasHeight - viewportActualHeight) / 2
     }
@@ -43,7 +42,7 @@ export default (canvasRef: Ref<HTMLElement | undefined>) => {
       const newViewportActualHeight = newViewportActualWidth * viewportRatio.value
       const oldViewportActualHeight = oldViewportActualWidth * viewportRatio.value
 
-      mainStore.setCanvasScale(newViewportActualWidth / VIEWPORT_SIZE)
+      mainStore.setCanvasScale(newViewportActualWidth / viewportSize.value)
 
       viewportLeft.value = viewportLeft.value - (newViewportActualWidth - oldViewportActualWidth) / 2
       viewportTop.value = viewportTop.value - (newViewportActualHeight - oldViewportActualHeight) / 2
@@ -54,7 +53,7 @@ export default (canvasRef: Ref<HTMLElement | undefined>) => {
       const newViewportActualWidth = newViewportActualHeight / viewportRatio.value
       const oldViewportActualWidth = oldViewportActualHeight / viewportRatio.value
 
-      mainStore.setCanvasScale(newViewportActualHeight / (VIEWPORT_SIZE * viewportRatio.value))
+      mainStore.setCanvasScale(newViewportActualHeight / (viewportSize.value * viewportRatio.value))
 
       viewportLeft.value = viewportLeft.value - (newViewportActualWidth - oldViewportActualWidth) / 2
       viewportTop.value = viewportTop.value - (newViewportActualHeight - oldViewportActualHeight) / 2
@@ -64,6 +63,7 @@ export default (canvasRef: Ref<HTMLElement | undefined>) => {
   // 可视区域缩放或比例变化时，重置/更新可视区域的位置
   watch(canvasPercentage, setViewportPosition)
   watch(viewportRatio, initViewportPosition)
+  watch(viewportSize, initViewportPosition)
 
   // 画布拖拽状态改变（复原）时，重置可视区域的位置
   watch(canvasDragged, () => {
@@ -72,8 +72,8 @@ export default (canvasRef: Ref<HTMLElement | undefined>) => {
 
   // 画布可视区域位置和大小的样式
   const viewportStyles = computed(() => ({
-    width: VIEWPORT_SIZE,
-    height: VIEWPORT_SIZE * viewportRatio.value,
+    width: viewportSize.value,
+    height: viewportSize.value * viewportRatio.value,
     left: viewportLeft.value,
     top: viewportTop.value,
   }))

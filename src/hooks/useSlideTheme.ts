@@ -30,10 +30,11 @@ export default () => {
         if (slide.background.type === 'solid' && slide.background.color) {
           backgroundColorValues.push({ area: 1, value: slide.background.color })
         }
-        else if (slide.background.type === 'gradient' && slide.background.gradientColor) {
-          backgroundColorValues.push(...slide.background.gradientColor.map(item => ({
-            area: 1,
-            value: item,
+        else if (slide.background.type === 'gradient' && slide.background.gradient) {
+          const len = slide.background.gradient.colors.length
+          backgroundColorValues.push(...slide.background.gradient.colors.map(item => ({
+            area: 1 / len,
+            value: item.color,
           })))
         }
         else backgroundColorValues.push({ area: 1, value: theme.value.backgroundColor })
@@ -53,6 +54,13 @@ export default () => {
         if (el.type === 'shape' || el.type === 'text') {
           if (el.fill) {
             themeColorValues.push({ area, value: el.fill })
+          }
+          if (el.type === 'shape' && el.gradient) {
+            const len = el.gradient.colors.length
+            themeColorValues.push(...el.gradient.colors.map(item => ({
+              area: 1 / len * area,
+              value: item.color,
+            })))
           }
 
           const text = (el.type === 'shape' ? el.text?.content : el.content) || ''
@@ -142,7 +150,7 @@ export default () => {
           if (el.fill) {
             themeColorValues.push({ area: area * 0.5, value: el.fill })
           }
-          themeColorValues.push({ area: area * 0.5, value: el.themeColor[0] })
+          themeColorValues.push({ area: area * 0.5, value: el.themeColors[0] })
         }
         else if (el.type === 'line') {
           themeColorValues.push({ area, value: el.color })
@@ -160,8 +168,8 @@ export default () => {
     for (const item of backgroundColorValues) {
       const color = tinycolor(item.value).toRgbString()
       if (color === 'rgba(0, 0, 0, 0)') continue
-      if (!backgroundColors[color]) backgroundColors[color] = 1
-      else backgroundColors[color] += 1
+      if (!backgroundColors[color]) backgroundColors[color] = item.area
+      else backgroundColors[color] += item.area
     }
 
     const themeColors: { [key: string]: number } = {}
@@ -210,8 +218,8 @@ export default () => {
         const color = tinycolor(el.theme.color).toRgbString()
         if (!colors.includes(color)) colors.push(color)
       }
-      if (el.type === 'chart' && el.fill && tinycolor(el.fill).getAlpha() !== 0) {
-        const color = tinycolor(el.fill).toRgbString()
+      if (el.type === 'chart' && el.themeColors[0] && tinycolor(el.themeColors[0]).getAlpha() !== 0) {
+        const color = tinycolor(el.themeColors[0]).toRgbString()
         if (!colors.includes(color)) colors.push(color)
       }
       if (el.type === 'line' && tinycolor(el.color).getAlpha() !== 0) {
@@ -275,8 +283,8 @@ export default () => {
         }
       }
       if (el.type === 'chart') {
-        el.themeColor = [colorMap[tinycolor(el.themeColor[0]).toRgbString()]] || el.themeColor
-        el.gridColor = theme.fontColor
+        el.themeColors = [colorMap[tinycolor(el.themeColors[0]).toRgbString()]] || el.themeColors
+        el.textColor = theme.fontColor
       }
       if (el.type === 'line') el.color = colorMap[tinycolor(el.color).toRgbString()] || el.color
       if (el.type === 'audio') el.color = colorMap[tinycolor(el.color).toRgbString()] || el.color
@@ -349,8 +357,8 @@ export default () => {
           }
         }
         else if (el.type === 'chart') {
-          el.themeColor = [themeColor]
-          el.gridColor = fontColor
+          el.themeColors = [themeColor]
+          el.textColor = fontColor
         }
         else if (el.type === 'latex') el.color = fontColor
         else if (el.type === 'audio') el.color = themeColor

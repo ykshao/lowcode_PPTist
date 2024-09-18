@@ -1,4 +1,3 @@
-import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { useSlidesStore, useMainStore } from '@/store'
@@ -9,7 +8,7 @@ import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 export default () => {
   const mainStore = useMainStore()
   const slidesStore = useSlidesStore()
-  const { currentSlide, slides } = storeToRefs(slidesStore)
+  const { currentSlide } = storeToRefs(slidesStore)
 
   const { addHistorySnapshot } = useHistorySnapshot()
 
@@ -100,15 +99,8 @@ export default () => {
     addHistorySnapshot()
   }
 
-  const isEmptySlide = computed(() => {
-    if (slides.value.length > 1) return false
-    if (slides.value[0].elements.length > 0) return false
-    return true
-  })
-
   return {
     addElementsFromData,
     addSlidesFromData,
-    isEmptySlide,
   }
 }

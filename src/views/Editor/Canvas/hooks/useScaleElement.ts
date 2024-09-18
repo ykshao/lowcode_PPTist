@@ -3,7 +3,6 @@ import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore, useKeyboardStore } from '@/store'
 import type { PPTElement, PPTImageElement, PPTLineElement, PPTShapeElement } from '@/types/slides'
 import { OperateResizeHandlers, type AlignmentLineProps, type MultiSelectRange } from '@/types/edit'
-import { VIEWPORT_SIZE } from '@/configs/canvas'
 import { MIN_SIZE } from '@/configs/element'
 import { SHAPE_PATH_FORMULAS } from '@/configs/shapes'
 import { type AlignLine, uniqAlignLines } from '@/utils/element'
@@ -101,7 +100,7 @@ export default (
   const mainStore = useMainStore()
   const slidesStore = useSlidesStore()
   const { activeElementIdList, activeGroupElementId } = storeToRefs(mainStore)
-  const { viewportRatio } = storeToRefs(slidesStore)
+  const { viewportRatio, viewportSize } = storeToRefs(slidesStore)
   const { ctrlOrShiftKeyActive } = storeToRefs(useKeyboardStore())
 
   const { addHistorySnapshot } = useHistorySnapshot()
@@ -155,8 +154,8 @@ export default (
     // 包括页面内除目标元素外的其他元素在画布中的各个可吸附对齐位置：上下左右四边
     // 其中线条和被旋转过的元素不参与吸附对齐
     else {
-      const edgeWidth = VIEWPORT_SIZE
-      const edgeHeight = VIEWPORT_SIZE * viewportRatio.value
+      const edgeWidth = viewportSize.value
+      const edgeHeight = viewportSize.value * viewportRatio.value
       const isActiveGroupElement = element.id === activeGroupElementId.value
       
       for (const el of elementList.value) {
@@ -405,7 +404,7 @@ export default (
           const pathFormula = SHAPE_PATH_FORMULAS[el.pathFormula]
 
           let path = ''
-          if ('editable' in pathFormula) path = pathFormula.formula(width, height, el.keypoint!)
+          if ('editable' in pathFormula) path = pathFormula.formula(width, height, el.keypoints!)
           else path = pathFormula.formula(width, height)
 
           return {

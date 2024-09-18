@@ -64,6 +64,7 @@ import {
   ChartScatter,
   ChartLine,
   ChartPie,
+  RadarChart,
   Text,
   Rotate,
   LeftTwo,
@@ -122,6 +123,8 @@ import {
   Info,
   Comment,
   User,
+  Switch,
+  More,
 } from '@icon-park/vue-next'
 
 export interface Icons {
@@ -191,6 +194,7 @@ export const icons: Icons = {
   IconChartScatter: ChartScatter,
   IconChartLine: ChartLine,
   IconChartPie: ChartPie,
+  IconRadarChart: RadarChart,
   IconText: Text,
   IconRotate: Rotate,
   IconLeftTwo: LeftTwo,
@@ -249,6 +253,8 @@ export const icons: Icons = {
   IconInfo: Info,
   IconComment: Comment,
   IconUser: User,
+  IconSwitch: Switch,
+  IconMore: More,
 }
 
 export default {
