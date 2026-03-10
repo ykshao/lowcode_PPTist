@@ -59,13 +59,13 @@
       <div class="row">
         <div class="title">忽略在线字体：</div>
         <div class="config-item">
-          <Switch v-model:value="ignoreWebfont" v-tooltip="'导出时默认忽略在线字体，若您在幻灯片中使用了在线字体，且希望导出后保留相关样式，可选择关闭【忽略在线字体】选项，但要注意这将会增加导出用时。'" />
+          <Switch v-model:value="ignoreWebfont" v-tooltip="'导出时默认忽略在线字体，若您在幻灯片中使用了在线字体，且希望导出后保留相关样式，可选择关闭「忽略在线字体」选项，但要注意这将会增加导出用时。'" />
         </div>
       </div>
     </div>
 
     <div class="btns">
-      <Button class="btn export" type="primary" @click="expImage()">导出图片</Button>
+      <Button class="btn export" type="primary" @click="expImage()"><i-icon-park-outline:download /> 导出图片</Button>
       <Button class="btn close" @click="emit('close')">关闭</Button>
     </div>
 
@@ -74,7 +74,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
 import useExport from '@/hooks/useExport'
@@ -93,12 +93,12 @@ const emit = defineEmits<{
 
 const { slides, currentSlide } = storeToRefs(useSlidesStore())
 
-const imageThumbnailsRef = ref<HTMLElement>()
+const imageThumbnailsRef = useTemplateRef<HTMLElement>('imageThumbnailsRef')
 const rangeType = ref<'all' | 'current' | 'custom'>('all')
 const range = ref<[number, number]>([1, slides.value.length])
 const format = ref<'jpeg' | 'png'>('jpeg')
 const quality = ref(1)
-const ignoreWebfont = ref(true)
+const ignoreWebfont = ref(false)
 
 const renderSlides = computed(() => {
   if (rangeType.value === 'all') return slides.value
@@ -138,7 +138,7 @@ const expImage = () => {
 }
 .configs {
   width: 350px;
-  height: calc(100% - 100px);
+  height: calc(100% - 80px);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -168,7 +168,7 @@ const expImage = () => {
 }
 .btns {
   width: 300px;
-  height: 100px;
+  height: 80px;
   display: flex;
   justify-content: center;
   align-items: center;

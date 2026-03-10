@@ -16,11 +16,12 @@
     @input="$event => handleInput($event)"
     @focus="$event => emit('focus', $event)"
     @blur="$event => emit('blur', $event)"
+    @keydown.enter="$event => emit('enter', $event)"
   ></textarea>
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { useTemplateRef } from 'vue'
 
 withDefaults(defineProps<{
   value: string
@@ -40,13 +41,14 @@ const emit = defineEmits<{
   (event: 'update:value', payload: string): void
   (event: 'focus', payload: FocusEvent): void
   (event: 'blur', payload: FocusEvent): void
+  (event: 'enter', payload: KeyboardEvent): void
 }>()
 
 const handleInput = (e: Event) => {
   emit('update:value', (e.target as HTMLInputElement).value)
 }
 
-const textareaRef = ref<HTMLTextAreaElement>()
+const textareaRef = useTemplateRef<HTMLTextAreaElement>('textareaRef')
 const focus = () => {
   if (textareaRef.value) textareaRef.value.focus()
 }

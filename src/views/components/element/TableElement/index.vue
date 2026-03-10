@@ -46,7 +46,7 @@
 </template>
 
 <script lang="ts" setup>
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, watch, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
 import type { PPTTableElement, TableCell } from '@/types/slides'
@@ -65,7 +65,7 @@ const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
 const { canvasScale, handleElementId, isScaling } = storeToRefs(mainStore)
 
-const elementRef = ref<HTMLElement>()
+const elementRef = useTemplateRef<HTMLElement>('elementRef')
 
 const { addHistorySnapshot } = useHistorySnapshot()
 
@@ -178,6 +178,7 @@ const updateSelectedCells = (cells: string[]) => {
   width: 100%;
   height: 100%;
   position: relative;
+  font-family: $textElementFont;
   cursor: move;
 }
 .table-mask {

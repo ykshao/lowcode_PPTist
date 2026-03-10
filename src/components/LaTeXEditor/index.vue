@@ -59,7 +59,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { hfmath } from './hfmath'
 import { FORMULA_LIST, SYMBOL_LIST } from '@/configs/latex'
 import message from '@/utils/message'
@@ -107,7 +107,7 @@ const symbolTabs = SYMBOL_LIST.map(item => ({
 
 const latex = ref('')
 const toolbarState = ref<'symbol' | 'formula'>('symbol')
-const textAreaRef = ref<InstanceType<typeof TextArea>>()
+const textAreaRef = useTemplateRef<InstanceType<typeof TextArea>>('textAreaRef')
 
 const selectedSymbolKey = ref(SYMBOL_LIST[0].type)
 const symbolPool = computed(() => {
@@ -117,6 +117,9 @@ const symbolPool = computed(() => {
 
 onMounted(() => {
   if (props.value) latex.value = props.value
+  setTimeout(() => {
+    textAreaRef.value && textAreaRef.value.focus()
+  }, 0)
 })
 
 const update = () => {
@@ -179,6 +182,7 @@ const insertSymbol = (latex: string) => {
   margin-top: 20px;
   border: 1px solid $borderColor;
   user-select: none;
+  border-radius: $borderRadius;
 }
 .placeholder {
   color: #888;
@@ -201,6 +205,8 @@ const insertSymbol = (latex: string) => {
   display: flex;
   flex-direction: column;
   user-select: none;
+  border-radius: $borderRadius;
+  overflow: hidden;
 }
 .content {
   height: calc(100% - 40px);
@@ -226,6 +232,7 @@ const insertSymbol = (latex: string) => {
     display: flex;
     align-items: center;
     background-color: $lightGray;
+    border-radius: $borderRadius;
     cursor: pointer;
   }
 }
@@ -246,6 +253,7 @@ const insertSymbol = (latex: string) => {
   display: flex;
   justify-content: center;
   align-items: center;
+  border-radius: $borderRadius;
 
   &:hover {
     background-color: $lightGray;

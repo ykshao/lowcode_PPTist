@@ -1,12 +1,13 @@
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { parse, type Shape, type Element, type ChartItem } from 'pptxtojson'
+import { parse, type Shape, type Element, type ChartItem, type BaseElement } from 'pptxtojson'
 import { nanoid } from 'nanoid'
 import { useSlidesStore } from '@/store'
 import { decrypt } from '@/utils/crypto'
 import { type ShapePoolItem, SHAPE_LIST, SHAPE_PATH_FORMULAS } from '@/configs/shapes'
 import useAddSlidesOrElements from '@/hooks/useAddSlidesOrElements'
 import useSlideHandler from '@/hooks/useSlideHandler'
+import useHistorySnapshot from './useHistorySnapshot'
 import message from '@/utils/message'
 import { getSvgPathRange } from '@/utils/svgPathParser'
 import type {
@@ -17,39 +18,160 @@ import type {
   SlideBackground,
   PPTShapeElement,
   PPTLineElement,
+  PPTImageElement,
   ShapeTextAlign,
   PPTTextElement,
   ChartOptions,
+  Gradient,
 } from '@/types/slides'
 
-const convertFontSizePtToPx = (html: string, ratio: number) => {
+const shapeVAlignMap: Record<string, ShapeTextAlign> = {
+  'mid': 'middle',
+  'down': 'bottom',
+  'up': 'top',
+}
+
+const convertTextContent = (html: string, ratio: number) => {
   return html.replace(/font-size:\s*([\d.]+)pt/g, (match, p1) => {
-    return `font-size: ${(parseFloat(p1) * ratio).toFixed(1)}px`
-  })
+    return `font-size: ${Math.floor(parseFloat(p1) * ratio)}px`
+  }).replace(/&nbsp;/g, ' ')
+}
+
+const getMaxFontSize = (html: string, defaultFontSize: number = 18): number => {
+  const fontSizeRegex = /font-size\s*:\s*(\d+(?:\.\d+)?)\s*pt/gi
+  const fontSizes = [defaultFontSize]
+
+  let match
+  while ((match = fontSizeRegex.exec(html)) !== null) {
+    const size = parseFloat(match[1])
+    if (size > 0) fontSizes.push(size)
+  }
+
+  return Math.max(...fontSizes)
+}
+
+const getParagraphMetrics = (html: string, ratio: number) => {
+  const tagRegex = /<(div|p|li)(?![a-z0-9])[^>]*>/gi
+
+  const lineHeights = []
+  const margins = []
+  let paragraphCount = 0
+
+  let match
+  let paragraphIndex = 0
+  while ((match = tagRegex.exec(html)) !== null) {
+    const fullTag = match[0]
+    paragraphCount++
+
+    const styleRegex = /\bstyle\s*=\s*(['"])(.*?)\1/i
+    const styleMatch = fullTag.match(styleRegex)
+
+    let styleContent = ''
+    if (styleMatch && styleMatch[2]) {
+      styleContent = styleMatch[2]
+    }
+
+    const getProp = (propName: string) => {
+      if (!styleContent) return null
+      const propRegex = new RegExp(`${propName}\\s*:\\s*([^;]+)`, 'i')
+      const propMatch = styleContent.match(propRegex)
+      return propMatch ? propMatch[1].trim() : null
+    }
+
+    const marginTop = getProp('margin-top')
+    const marginBottom = getProp('margin-bottom')
+    const lineHeight = getProp('line-height')
+
+    const tagStartIndex = match.index
+    const tagName = match[1]
+    let tagEndIndex = html.indexOf('</' + tagName + '>', tagStartIndex)
+    if (tagEndIndex === -1) tagEndIndex = tagStartIndex + fullTag.length
+
+    const paragraphHtml = html.substring(tagStartIndex, tagEndIndex)
+    const maxFontSize = getMaxFontSize(paragraphHtml, 18)
+
+    let lineHeightValue = 1
+    if (lineHeight) {
+      if (lineHeight.indexOf('pt') !== -1) {
+        lineHeightValue = parseFloat(lineHeight.replace('pt', '')) / maxFontSize
+      }
+      else {
+        lineHeightValue = parseFloat(lineHeight)
+      }
+    }
+    lineHeights.push(lineHeightValue)
+
+    const isFirstParagraph = paragraphIndex === 0
+    const isLastParagraph = match.index + fullTag.length >= html.lastIndexOf('</' + tagName + '>')
+
+    if (marginTop && !isFirstParagraph) {
+      let marginTopValue = 0
+      if (marginTop.indexOf('pt') !== -1) {
+        marginTopValue = parseFloat(marginTop.replace('pt', ''))
+      }
+      else if (marginTop.indexOf('em') !== -1) {
+        marginTopValue = parseFloat(marginTop.replace('em', '')) * maxFontSize
+      }
+      if (marginTopValue > 0) margins.push(marginTopValue)
+    }
+
+    if (marginBottom && !isLastParagraph) {
+      let marginBottomValue = 0
+      if (marginBottom.indexOf('pt') !== -1) {
+        marginBottomValue = parseFloat(marginBottom.replace('pt', ''))
+      }
+      else if (marginBottom.indexOf('em') !== -1) {
+        marginBottomValue = parseFloat(marginBottom.replace('em', '')) * maxFontSize
+      }
+      if (marginBottomValue > 0) margins.push(marginBottomValue)
+    }
+
+    paragraphIndex++
+  }
+
+  let lineHeight = 1
+  if (lineHeights.length) {
+    lineHeight = +(lineHeights.reduce((sum, height) => sum + height, 0) / paragraphCount).toFixed(2)
+  }
+
+  let margin = 0
+  if (margins.length && paragraphCount > 1) {
+    margin = margins.reduce((sum, margin) => sum + margin, 0) / (paragraphCount - 1)
+  }
+
+  return {
+    lineHeight,
+    margin: margin ? +(margin * ratio).toFixed(1) : null,
+  }
 }
 
 export default () => {
   const slidesStore = useSlidesStore()
   const { theme } = storeToRefs(useSlidesStore())
 
+  const { addHistorySnapshot } = useHistorySnapshot()
   const { addSlidesFromData } = useAddSlidesOrElements()
   const { isEmptySlide } = useSlideHandler()
 
   const exporting = ref(false)
 
-  // 导入pptist文件
-  const importSpecificFile = (files: FileList, cover = false) => {
+  // 导入JSON文件
+  const importJSON = (files: FileList | File[], cover = false) => {
     const file = files[0]
 
     const reader = new FileReader()
     reader.addEventListener('load', () => {
       try {
-        const slides = JSON.parse(decrypt(reader.result as string))
+        const { slides, theme } = JSON.parse(reader.result as string)
         if (cover) {
           slidesStore.updateSlideIndex(0)
-          slidesStore.setSlides(slides)
+          slidesStore.setSlides(slides, (theme || {}))
+          addHistorySnapshot()
         }
-        else if (isEmptySlide.value) slidesStore.setSlides(slides)
+        else if (isEmptySlide.value) {
+          slidesStore.setSlides(slides, (theme || {}))
+          addHistorySnapshot()
+        }
         else addSlidesFromData(slides)
       }
       catch {
@@ -59,7 +181,82 @@ export default () => {
     reader.readAsText(file)
   }
 
-  const parseLineElement = (el: Shape) => {
+  // 导入pptist文件
+  const importSpecificFile = (files: FileList | File[], cover = false) => {
+    const file = files[0]
+
+    const reader = new FileReader()
+    reader.addEventListener('load', () => {
+      try {
+        const { slides, theme } = JSON.parse(decrypt(reader.result as string))
+        if (cover) {
+          slidesStore.updateSlideIndex(0)
+          slidesStore.setSlides(slides, (theme || {}))
+          addHistorySnapshot()
+        }
+        else if (isEmptySlide.value) {
+          slidesStore.setSlides(slides, (theme || {}))
+          addHistorySnapshot()
+        }
+        else addSlidesFromData(slides)
+      }
+      catch {
+        message.error('无法正确读取 / 解析该文件')
+      }
+    })
+    reader.readAsText(file)
+  }
+
+  const rotateLine = (line: PPTLineElement, angleDeg: number) => {
+    const { start, end } = line
+      
+    const angleRad = angleDeg * Math.PI / 180
+    
+    const midX = (start[0] + end[0]) / 2
+    const midY = (start[1] + end[1]) / 2
+    
+    const startTransX = start[0] - midX
+    const startTransY = start[1] - midY
+    const endTransX = end[0] - midX
+    const endTransY = end[1] - midY
+    
+    const cosA = Math.cos(angleRad)
+    const sinA = Math.sin(angleRad)
+    
+    const startRotX = startTransX * cosA - startTransY * sinA
+    const startRotY = startTransX * sinA + startTransY * cosA
+    
+    const endRotX = endTransX * cosA - endTransY * sinA
+    const endRotY = endTransX * sinA + endTransY * cosA
+    
+    const startNewX = startRotX + midX
+    const startNewY = startRotY + midY
+    const endNewX = endRotX + midX
+    const endNewY = endRotY + midY
+    
+    const beforeMinX = Math.min(start[0], end[0])
+    const beforeMinY = Math.min(start[1], end[1])
+    
+    const afterMinX = Math.min(startNewX, endNewX)
+    const afterMinY = Math.min(startNewY, endNewY)
+    
+    const startAdjustedX = startNewX - afterMinX
+    const startAdjustedY = startNewY - afterMinY
+    const endAdjustedX = endNewX - afterMinX
+    const endAdjustedY = endNewY - afterMinY
+    
+    const startAdjusted: [number, number] = [startAdjustedX, startAdjustedY]
+    const endAdjusted: [number, number] = [endAdjustedX, endAdjustedY]
+    const offset = [afterMinX - beforeMinX, afterMinY - beforeMinY]
+    
+    return {
+      start: startAdjusted,
+      end: endAdjusted,
+      offset,
+    }
+  }
+
+  const parseLineElement = (el: Shape, ratio: number) => {
     let start: [number, number] = [0, 0]
     let end: [number, number] = [0, 0]
 
@@ -83,7 +280,7 @@ export default () => {
     const data: PPTLineElement = {
       type: 'line',
       id: nanoid(10),
-      width: el.borderWidth || 1,
+      width: +((el.borderWidth || 1) * ratio).toFixed(2),
       left: el.left,
       top: el.top,
       start,
@@ -92,18 +289,106 @@ export default () => {
       color: el.borderColor,
       points: ['', /straightConnector/.test(el.shapType) ? 'arrow' : '']
     }
+    if (el.rotate) {
+      const { start, end, offset } = rotateLine(data, el.rotate)
+
+      data.start = start
+      data.end = end
+      data.left = data.left + offset[0]
+      data.top = data.top + offset[1]
+    }
     if (/bentConnector/.test(el.shapType)) {
       data.broken2 = [
-        Math.abs(start[0] - end[0]) / 2,
-        Math.abs(start[1] - end[1]) / 2,
+        Math.abs(data.start[0] - data.end[0]) / 2,
+        Math.abs(data.start[1] - data.end[1]) / 2,
       ]
+    }
+    if (/curvedConnector/.test(el.shapType)) {
+      const cubic: [number, number] = [
+        Math.abs(data.start[0] - data.end[0]) / 2,
+        Math.abs(data.start[1] - data.end[1]) / 2,
+      ]
+      data.cubic = [cubic, cubic]
     }
 
     return data
   }
 
+  const flipGroupElements = (elements: BaseElement[], axis: 'x' | 'y') => {
+    const minX = Math.min(...elements.map(el => el.left))
+    const maxX = Math.max(...elements.map(el => el.left + el.width))
+    const minY = Math.min(...elements.map(el => el.top))
+    const maxY = Math.max(...elements.map(el => el.top + el.height))
+
+    const centerX = (minX + maxX) / 2
+    const centerY = (minY + maxY) / 2
+
+    return elements.map(element => {
+      const newElement = { ...element }
+
+      if (axis === 'y') newElement.left = 2 * centerX - element.left - element.width
+      if (axis === 'x') newElement.top = 2 * centerY - element.top - element.height
+  
+      return newElement
+    })
+  }
+
+  const calculateRotatedPosition = (
+    ax: number, // A 的 x
+    ay: number, // A 的 y
+    aw: number, // A 的宽
+    ah: number, // A 的高
+    bx: number, // B 相对 A 的 x (ox)
+    by: number, // B 相对 A 的 y (oy)
+    bw: number, // B 的宽
+    bh: number, // B 的高
+    ak: number, // A 的旋转角度（度，正顺时针）
+    bk: number, // B 的旋转角度（度，正顺时针）
+  ) => {
+    const aRadians = ak * (Math.PI / 180)
+    const aCos = Math.cos(aRadians)
+    const aSin = Math.sin(aRadians)
+
+    const aCenterX = ax + aw / 2
+    const aCenterY = ay + ah / 2
+
+    const corners = [
+      { ox: bx, oy: by },
+      { ox: bx + bw, oy: by },
+      { ox: bx + bw, oy: by + bh },
+      { ox: bx, oy: by + bh },
+    ]
+
+    let minX = Infinity
+    let minY = Infinity
+
+    for (const corner of corners) {
+      const relativeX = corner.ox - aw / 2
+      const relativeY = corner.oy - ah / 2
+
+      const rotatedX = relativeX * aCos + relativeY * aSin
+      const rotatedY = -relativeX * aSin + relativeY * aCos
+
+      const graphicX = aCenterX + rotatedX
+      const graphicY = aCenterY + rotatedY
+
+      minX = Math.min(minX, graphicX)
+      minY = Math.min(minY, graphicY)
+    }
+
+    const globalRotation = (bk + ak) % 360
+
+    return { x: minX, y: minY, globalRotation }
+  }
+
   // 导入PPTX文件
-  const importPPTXFile = (files: FileList) => {
+  const importPPTXFile = (files: FileList | File[], options?: { cover?: boolean; fixedViewport?: boolean }) => {
+    const defaultOptions = {
+      cover: false,
+      fixedViewport: false, 
+    }
+    const { cover, fixedViewport } = { ...defaultOptions, ...options }
+
     const file = files[0]
     if (!file) return
 
@@ -116,12 +401,23 @@ export default () => {
     
     const reader = new FileReader()
     reader.onload = async e => {
-      const json = await parse(e.target!.result as ArrayBuffer)
+      let json = null
+      try {
+        json = await parse(e.target!.result as ArrayBuffer)
+      }
+      catch {
+        exporting.value = false
+        message.error('无法正确读取 / 解析该文件')
+        return
+      }
 
-      const ratio = 96 / 72
+      let ratio = 96 / 72
       const width = json.size.width
+      
+      if (fixedViewport) ratio = 1000 / width
+      else slidesStore.setViewportSize(width * ratio)
 
-      slidesStore.setViewportSize(width * ratio)
+      slidesStore.setTheme({ themeColors: json.themeColors })
 
       const slides: Slide[] = []
       for (const item of json.slides) {
@@ -140,7 +436,7 @@ export default () => {
           background = {
             type: 'gradient',
             gradient: {
-              type: 'linear',
+              type: value.path === 'line' ? 'linear' : 'radial',
               colors: value.colors.map(item => ({
                 ...item,
                 pos: parseInt(item.pos),
@@ -149,10 +445,16 @@ export default () => {
             },
           }
         }
+        else if (type === 'pattern') {
+          background = {
+            type: 'solid',
+            color: '#fff',
+          }
+        }
         else {
           background = {
             type: 'solid',
-            color: value,
+            color: value || '#fff',
           }
         }
 
@@ -160,10 +462,13 @@ export default () => {
           id: nanoid(10),
           elements: [],
           background,
+          remark: item.note || '',
         }
 
         const parseElements = (elements: Element[]) => {
-          for (const el of elements) {
+          const sortedElements = elements.sort((a, b) => a.order - b.order)
+
+          for (const el of sortedElements) {
             const originWidth = el.width || 1
             const originHeight = el.height || 1
             const originLeft = el.left
@@ -175,38 +480,77 @@ export default () => {
             el.top = el.top * ratio
   
             if (el.type === 'text') {
-              const textEl: PPTTextElement = {
-                type: 'text',
-                id: nanoid(10),
-                width: el.width,
-                height: el.height,
-                left: el.left,
-                top: el.top,
-                rotate: el.rotate,
-                defaultFontName: theme.value.fontName,
-                defaultColor: theme.value.fontColor,
-                content: convertFontSizePtToPx(el.content, ratio),
-                lineHeight: 1,
-                outline: {
-                  color: el.borderColor,
-                  width: el.borderWidth,
-                  style: el.borderType,
-                },
-                fill: el.fillColor,
-                vertical: el.isVertical,
-              }
-              if (el.shadow) {
-                textEl.shadow = {
-                  h: el.shadow.h * ratio,
-                  v: el.shadow.v * ratio,
-                  blur: el.shadow.blur * ratio,
-                  color: el.shadow.color,
+              if (el.autoFit && el.autoFit.type === 'text') {
+                const fontScale = ratio * (el.autoFit.fontScale || 100) / 100
+                const metrics = getParagraphMetrics(el.content, fontScale)
+                const shapeEl: PPTShapeElement = {
+                  type: 'shape',
+                  id: nanoid(10),
+                  width: el.width,
+                  height: el.height,
+                  left: el.left,
+                  top: el.top,
+                  rotate: el.rotate,
+                  viewBox: [200, 200],
+                  path: 'M 0 0 L 200 0 L 200 200 L 0 200 Z',
+                  fill: el.fill?.type === 'color' ? el.fill.value : '',
+                  fixedRatio: false,
+                  outline: {
+                    color: el.borderColor,
+                    width: +(el.borderWidth * ratio).toFixed(2),
+                    style: el.borderType,
+                  },
+                  text: {
+                    content: convertTextContent(el.content, fontScale),
+                    defaultFontName: theme.value.fontName,
+                    defaultColor: theme.value.fontColor,
+                    align: shapeVAlignMap[el.vAlign] || 'middle',
+                    lineHeight: 1,
+                  },
                 }
+                if (el.link) shapeEl.link = { type: 'web', target: el.link }
+                if (metrics.lineHeight) shapeEl.text!.lineHeight = metrics.lineHeight
+                if (metrics.margin) shapeEl.text!.paragraphSpace = metrics.margin
+                slide.elements.push(shapeEl)
               }
-              slide.elements.push(textEl)
+              else {
+                const metrics = getParagraphMetrics(el.content, ratio)
+                const textEl: PPTTextElement = {
+                  type: 'text',
+                  id: nanoid(10),
+                  width: el.width,
+                  height: el.height,
+                  left: el.left,
+                  top: el.top,
+                  rotate: el.rotate,
+                  defaultFontName: theme.value.fontName,
+                  defaultColor: theme.value.fontColor,
+                  content: convertTextContent(el.content, ratio),
+                  lineHeight: 1,
+                  outline: {
+                    color: el.borderColor,
+                    width: +(el.borderWidth * ratio).toFixed(2),
+                    style: el.borderType,
+                  },
+                  fill: el.fill?.type === 'color' ? el.fill.value : '',
+                  vertical: el.isVertical,
+                }
+                if (el.shadow) {
+                  textEl.shadow = {
+                    h: el.shadow.h * ratio,
+                    v: el.shadow.v * ratio,
+                    blur: el.shadow.blur * ratio,
+                    color: el.shadow.color,
+                  }
+                }
+                if (el.link) textEl.link = { type: 'web', target: el.link }
+                if (metrics.lineHeight) textEl.lineHeight = metrics.lineHeight
+                if (metrics.margin) textEl.paragraphSpace = metrics.margin
+                slide.elements.push(textEl)
+              }
             }
             else if (el.type === 'image') {
-              slide.elements.push({
+              const element: PPTImageElement = {
                 type: 'image',
                 id: nanoid(10),
                 src: el.src,
@@ -218,6 +562,55 @@ export default () => {
                 rotate: el.rotate,
                 flipH: el.isFlipH,
                 flipV: el.isFlipV,
+              }
+              if (el.borderWidth) {
+                element.outline = {
+                  color: el.borderColor,
+                  width: +(el.borderWidth * ratio).toFixed(2),
+                  style: el.borderType,
+                }
+              }
+              const clipShapeTypes = ['rect', 'roundRect', 'ellipse', 'triangle', 'rhombus', 'pentagon', 'hexagon', 'heptagon', 'octagon', 'parallelogram', 'trapezoid']
+              let geom = el.geom || 'rect'
+              if (geom.indexOf('custom:') !== -1) geom = geom.replace('custom:', '')
+              if (!clipShapeTypes.includes(geom)) geom = 'rect'
+
+              if (el.rect) {
+                element.clip = {
+                  shape: geom,
+                  range: [
+                    [
+                      el.rect.l || 0,
+                      el.rect.t || 0,
+                    ],
+                    [
+                      100 - (el.rect.r || 0),
+                      100 - (el.rect.b || 0),
+                    ],
+                  ]
+                }
+              }
+              else if (el.geom) {
+                element.clip = {
+                  shape: geom,
+                  range: [[0, 0], [100, 100]]
+                }
+              }
+
+              if (el.link) element.link = { type: 'web', target: el.link }
+              slide.elements.push(element)
+            }
+            else if (el.type === 'math') {
+              slide.elements.push({
+                type: 'image',
+                id: nanoid(10),
+                src: el.picBase64,
+                width: el.width,
+                height: el.height,
+                left: el.left,
+                top: el.top,
+                fixedRatio: true,
+                rotate: 0,
               })
             }
             else if (el.type === 'audio') {
@@ -231,7 +624,7 @@ export default () => {
                 top: el.top,
                 rotate: 0,
                 fixedRatio: false,
-                color: theme.value.themeColor,
+                color: theme.value.themeColors[0],
                 loop: false,
                 autoplay: false,
               })
@@ -250,18 +643,27 @@ export default () => {
               })
             }
             else if (el.type === 'shape') {
-              if (el.shapType === 'line' || /Connector/.test(el.shapType)) {
-                const lineElement = parseLineElement(el)
+              if (el.shapType === 'line' || /straightConnector/.test(el.shapType) || /bentConnector/.test(el.shapType) || /curvedConnector/.test(el.shapType)) {
+                const lineElement = parseLineElement(el, ratio)
                 slide.elements.push(lineElement)
               }
               else {
                 const shape = shapeList.find(item => item.pptxShapeType === el.shapType)
 
-                const vAlignMap: { [key: string]: ShapeTextAlign } = {
-                  'mid': 'middle',
-                  'down': 'bottom',
-                  'up': 'top',
-                }
+                const gradient: Gradient | undefined = el.fill?.type === 'gradient' ? {
+                  type: el.fill.value.path === 'line' ? 'linear' : 'radial',
+                  colors: el.fill.value.colors.map(item => ({
+                    ...item,
+                    pos: parseInt(item.pos),
+                  })),
+                  rotate: el.fill.value.rot,
+                } : undefined
+
+                const pattern: string | undefined = el.fill?.type === 'image' ? el.fill.value.picBase64 : undefined
+
+                const fill = el.fill?.type === 'color' ? el.fill.value : ''
+
+                const metrics = getParagraphMetrics(el.content, ratio)
                 
                 const element: PPTShapeElement = {
                   type: 'shape',
@@ -272,23 +674,29 @@ export default () => {
                   top: el.top,
                   viewBox: [200, 200],
                   path: 'M 0 0 L 200 0 L 200 200 L 0 200 Z',
-                  fill: el.fillColor || 'none',
+                  fill,
+                  gradient,
+                  pattern,
                   fixedRatio: false,
                   rotate: el.rotate,
                   outline: {
                     color: el.borderColor,
-                    width: el.borderWidth,
+                    width: +(el.borderWidth * ratio).toFixed(2),
                     style: el.borderType,
                   },
                   text: {
-                    content: convertFontSizePtToPx(el.content, ratio),
+                    content: convertTextContent(el.content, ratio),
                     defaultFontName: theme.value.fontName,
                     defaultColor: theme.value.fontColor,
-                    align: vAlignMap[el.vAlign] || 'middle',
+                    align: shapeVAlignMap[el.vAlign] || 'middle',
                   },
                   flipH: el.isFlipH,
                   flipV: el.isFlipV,
                 }
+                if (el.link) element.link = { type: 'web', target: el.link }
+                if (metrics.lineHeight) element.text!.lineHeight = metrics.lineHeight
+                if (metrics.margin) element.text!.paragraphSpace = metrics.margin
+
                 if (el.shadow) {
                   element.shadow = {
                     h: el.shadow.h * ratio,
@@ -308,24 +716,110 @@ export default () => {
     
                     const pathFormula = SHAPE_PATH_FORMULAS[shape.pathFormula]
                     if ('editable' in pathFormula && pathFormula.editable) {
-                      element.path = pathFormula.formula(el.width, el.height, pathFormula.defaultValue)
-                      element.keypoints = pathFormula.defaultValue
+                      let keypointValues = pathFormula.defaultValue
+                      if (el.keypoints) {
+                        let keypoint = 0
+                        if (el.shapType === 'roundRect') {
+                          const val = el.keypoints.adj === undefined ? 0.334 : el.keypoints.adj
+                          keypoint = val * 0.5
+                        }
+                        if (el.shapType === 'snip1Rect') {
+                          const val = el.keypoints.adj === undefined ? 0.334 : el.keypoints.adj
+                          keypoint = val * 0.5
+                        }
+                        if (el.shapType === 'snip2SameRect') {
+                          const val = el.keypoints.adj1 === undefined ? 0.334 : el.keypoints.adj1
+                          keypoint = val * 0.5
+                        }
+                        if (el.shapType === 'snip2DiagRect') {
+                          const val = el.keypoints.adj2 === undefined ? 0.334 : el.keypoints.adj2
+                          keypoint = val * 0.5
+                        }
+                        if (el.shapType === 'snipRoundRect') {
+                          const val1 = el.keypoints.adj1 === undefined ? 0.334 : el.keypoints.adj1
+                          const val2 = el.keypoints.adj2 === undefined ? 0.334 : el.keypoints.adj2
+                          keypoint = ((val1 + val2) / 2) * 0.5
+                        }
+                        if (el.shapType === 'round1Rect') {
+                          const val = el.keypoints.adj === undefined ? 0.334 : el.keypoints.adj
+                          keypoint = val * 0.5
+                        }
+                        if (el.shapType === 'round2SameRect') {
+                          const val = el.keypoints.adj1 === undefined ? 0.334 : el.keypoints.adj1
+                          keypoint = val * 0.5
+                        }
+                        if (el.shapType === 'round2DiagRect') {
+                          const val = el.keypoints.adj1 === undefined ? 0.334 : el.keypoints.adj1
+                          keypoint = val * 0.5
+                        }
+                        if (el.shapType === 'triangle') {
+                          const val = el.keypoints.adj === undefined ? 1 : el.keypoints.adj
+                          keypoint = val * 0.5
+                        }
+                        if (el.shapType === 'trapezoid') {
+                          const val = el.keypoints.adj === undefined ? 0.5 : el.keypoints.adj
+                          keypoint = val * 0.5
+                        }
+                        if (el.shapType === 'frame') {
+                          const val = el.keypoints.adj1 === undefined ? 0.25 : el.keypoints.adj1
+                          keypoint = val * 0.5
+                        }
+                        if (el.shapType === 'corner') {
+                          const val1 = el.keypoints.adj1 === undefined ? 1 : el.keypoints.adj1
+                          const val2 = el.keypoints.adj2 === undefined ? 1 : el.keypoints.adj2
+                          keypoint = ((val1 + val2) / 2) * 0.5
+                        }
+                        if (el.shapType === 'diagStripe') {
+                          const val = el.keypoints.adj === undefined ? 1 : el.keypoints.adj
+                          keypoint = val * 0.5
+                        }
+                        if (el.shapType === 'donut') {
+                          const val = el.keypoints.adj === undefined ? 0.5 : el.keypoints.adj
+                          keypoint = val * 0.5
+                        }
+                        if (el.shapType === 'plus') {
+                          const val = el.keypoints.adj === undefined ? 0.5 : el.keypoints.adj
+                          keypoint = 1 - val
+                        }
+                        if (pathFormula.range && keypoint < pathFormula.range[0][0]) keypoint = pathFormula.range[0][0]
+                        if (pathFormula.range && keypoint > pathFormula.range[0][1]) keypoint = pathFormula.range[0][1]
+                        keypointValues = [keypoint]
+                      }
+                      element.path = pathFormula.formula(el.width, el.height, keypointValues)
+                      element.keypoints = keypointValues
                     }
                     else element.path = pathFormula.formula(el.width, el.height)
                   }
                 }
-                if (el.shapType === 'custom') {
-                  if (el.path!.indexOf('NaN') !== -1) element.path = ''
+                else if (el.path && el.path.indexOf('NaN') === -1) {
+                  const { maxX, maxY } = getSvgPathRange(el.path)
+                  element.path = el.path
+                  if ((maxX / maxY) > (originWidth / originHeight)) {
+                    element.viewBox = [maxX, maxX * originHeight / originWidth]
+                  }
                   else {
-                    element.special = true
+                    element.viewBox = [maxY * originWidth / originHeight, maxY]
+                  }
+                }
+                if (el.shapType === 'custom') {
+                  if (el.path!.indexOf('NaN') !== -1) {
+                    if (element.width === 0) element.width = 0.1
+                    if (element.height === 0) element.height = 0.1
+                    element.path = el.path!.replace(/NaN/g, '0')
+                  }
+                  else {
                     element.path = el.path!
-  
-                    const { maxX, maxY } = getSvgPathRange(element.path)
-                    element.viewBox = [maxX || originWidth, maxY || originHeight]
+                  }
+                  const { maxX, maxY } = getSvgPathRange(element.path)
+                  if ((maxX / maxY) > (originWidth / originHeight)) {
+                    element.viewBox = [maxX, maxX * originHeight / originWidth]
+                  }
+                  else {
+                    element.viewBox = [maxY * originWidth / originHeight, maxY]
                   }
                 }
     
-                if (element.path) slide.elements.push(element)
+                if (element.path && element.viewBox[0] && element.viewBox[1]) slide.elements.push(element)
               }
             }
             else if (el.type === 'table') {
@@ -372,7 +866,21 @@ export default () => {
                 data.push(rowCells)
               }
   
-              const colWidths: number[] = new Array(col).fill(1 / col)
+              const allWidth = el.colWidths.reduce((a, b) => a + b, 0)
+              const colWidths: number[] = el.colWidths.map(item => item / allWidth)
+
+              const firstCell = el.data[0][0]
+              const border = firstCell.borders.top ||
+                firstCell.borders.bottom ||
+                el.borders.top ||
+                el.borders.bottom ||
+                firstCell.borders.left ||
+                firstCell.borders.right ||
+                el.borders.left ||
+                el.borders.right
+              const borderWidth = border?.borderWidth || 0
+              const borderStyle = border?.borderType || 'solid'
+              const borderColor = border?.borderColor || '#eeece1'
   
               slide.elements.push({
                 type: 'table',
@@ -385,11 +893,11 @@ export default () => {
                 rotate: 0,
                 data,
                 outline: {
-                  width: el.borderWidth || 2,
-                  style: el.borderType,
-                  color: el.borderColor || '#eeece1',
+                  width: +(borderWidth * ratio || 2).toFixed(2),
+                  style: borderStyle,
+                  color: borderColor,
                 },
-                cellMinHeight: 36,
+                cellMinHeight: el.rowHeights[0] ? el.rowHeights[0] * ratio : 36,
               })
             }
             else if (el.type === 'chart') {
@@ -456,7 +964,7 @@ export default () => {
                 left: el.left,
                 top: el.top,
                 rotate: 0,
-                themeColors: [theme.value.themeColor],
+                themeColors: el.colors.length ? el.colors : theme.value.themeColors,
                 textColor: theme.value.fontColor,
                 data: {
                   labels,
@@ -466,7 +974,48 @@ export default () => {
                 options,
               })
             }
-            else if (el.type === 'group' || el.type === 'diagram') {
+            else if (el.type === 'group') {
+              let elements: BaseElement[] = el.elements.map(_el => {
+                let left = _el.left + originLeft
+                let top = _el.top + originTop
+
+                let rotate = 0
+                if ('rotate' in _el) rotate = _el.rotate
+
+                if (el.rotate) {
+                  const { x, y, globalRotation } = calculateRotatedPosition(
+                    originLeft,
+                    originTop,
+                    originWidth,
+                    originHeight,
+                    _el.left,
+                    _el.top,
+                    _el.width,
+                    _el.height,
+                    el.rotate,
+                    rotate
+                  )
+                  left = x
+                  top = y
+                  rotate = globalRotation
+                }
+
+                const element = {
+                  ..._el,
+                  left,
+                  top,
+                }
+                if (el.isFlipH && 'isFlipH' in element) element.isFlipH = true
+                if (el.isFlipV && 'isFlipV' in element) element.isFlipV = true
+                if ('rotate' in element && el.rotate) element.rotate = rotate
+
+                return element
+              })
+              if (el.isFlipH) elements = flipGroupElements(elements, 'y')
+              if (el.isFlipV) elements = flipGroupElements(elements, 'x')
+              parseElements(elements)
+            }
+            else if (el.type === 'diagram') {
               const elements = el.elements.map(_el => ({
                 ..._el,
                 left: _el.left + originLeft,
@@ -476,11 +1025,21 @@ export default () => {
             }
           }
         }
-        parseElements(item.elements)
+        parseElements([...item.elements, ...item.layoutElements])
         slides.push(slide)
       }
-      slidesStore.updateSlideIndex(0)
-      slidesStore.setSlides(slides)
+
+      if (cover) {
+        slidesStore.updateSlideIndex(0)
+        slidesStore.setSlides(slides)
+        addHistorySnapshot()
+      }
+      else if (isEmptySlide.value) {
+        slidesStore.setSlides(slides)
+        addHistorySnapshot()
+      }
+      else addSlidesFromData(slides)
+
       exporting.value = false
     }
     reader.readAsArrayBuffer(file)
@@ -488,6 +1047,7 @@ export default () => {
 
   return {
     importSpecificFile,
+    importJSON,
     importPPTXFile,
     exporting,
   }

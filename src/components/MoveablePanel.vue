@@ -7,20 +7,26 @@
       height: h ? h + 'px' : 'auto',
       left: x + 'px',
       top: y + 'px',
+      zIndex: zIndex,
     }"
   >
     <template v-if="title">
       <div class="header" @mousedown="$event => startMove($event)">
         <div class="title">{{title}}</div>
-        <div class="close-btn" @click="emit('close')"><IconClose /></div>
+        <div class="close-btn" @mousedown.stop @click="emit('close')"><i-icon-park-outline:close /></div>
       </div>
 
-      <div class="content">
+      <div class="content" :style="contentStyle || {}" @mousedown="$event => bringToFrontPanel($event)">
         <slot></slot>
       </div>
     </template>
 
-    <div v-else class="content" @mousedown="$event => startMove($event)">
+    <div
+      class="content" 
+      :style="contentStyle || {}" 
+      @mousedown="$event => startMove($event)"
+      v-else
+    >
       <slot></slot>
     </div>
 
@@ -29,7 +35,12 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, useTemplateRef, type CSSProperties } from 'vue'
+
+const Z_INDEX_KEY = '__moveable_panel_z_index__'
+const Z_INDEX_BASE = 900
+const Z_INDEX_MAX = 999
+const ACTIVE_PANELS_KEY = '__moveable_panel_active_count__'
 
 const props = withDefaults(defineProps<{
   width: number
@@ -43,6 +54,7 @@ const props = withDefaults(defineProps<{
   title?: string
   moveable?: boolean
   resizeable?: boolean
+  contentStyle?: CSSProperties
 }>(), {
   minWidth: 20,
   minHeight: 20,
@@ -63,7 +75,9 @@ const x = ref(0)
 const y = ref(0)
 const w = ref(0)
 const h = ref(0)
-const moveablePanelRef = ref<HTMLElement>()
+const moveablePanelRef = useTemplateRef<HTMLElement>('moveablePanelRef')
+const zIndex = ref(900)
+
 const realHeight = computed(() => {
   if (!h.value) {
     return moveablePanelRef.value?.clientHeight || 0
@@ -71,19 +85,77 @@ const realHeight = computed(() => {
   return h.value
 })
 
+const initGlobalZIndex = () => {
+  if (!(window as any)[Z_INDEX_KEY]) (window as any)[Z_INDEX_KEY] = Z_INDEX_BASE
+  if (!(window as any)[ACTIVE_PANELS_KEY]) (window as any)[ACTIVE_PANELS_KEY] = 0
+
+  ;(window as any)[ACTIVE_PANELS_KEY]++
+
+  const current = (window as any)[Z_INDEX_KEY]
+  if (current >= Z_INDEX_MAX) (window as any)[Z_INDEX_KEY] = Z_INDEX_BASE
+  else (window as any)[Z_INDEX_KEY] = current + 1
+
+  return (window as any)[Z_INDEX_KEY]
+}
+
+const bringToFront = () => {
+  if (!(window as any)[Z_INDEX_KEY]) (window as any)[Z_INDEX_KEY] = Z_INDEX_BASE
+
+  const current = (window as any)[Z_INDEX_KEY]
+
+  if (zIndex.value === current) return current
+
+  if (current >= Z_INDEX_MAX) (window as any)[Z_INDEX_KEY] = Z_INDEX_BASE + 1
+  else (window as any)[Z_INDEX_KEY] = current + 1
+
+  return (window as any)[Z_INDEX_KEY]
+}
+
+const onPanelClose = () => {
+  if (!(window as any)[Z_INDEX_KEY] || !(window as any)[ACTIVE_PANELS_KEY]) return
+
+  const current = (window as any)[Z_INDEX_KEY]
+
+  ;(window as any)[ACTIVE_PANELS_KEY]--
+
+  if (zIndex.value === current && current > Z_INDEX_BASE) {
+    (window as any)[Z_INDEX_KEY] = current - 1
+  }
+
+  if ((window as any)[ACTIVE_PANELS_KEY] <= 0) {
+    (window as any)[Z_INDEX_KEY] = Z_INDEX_BASE
+    ;(window as any)[ACTIVE_PANELS_KEY] = 0
+  }
+}
+
 onMounted(() => {
   if (props.left >= 0) x.value = props.left
   else x.value = document.body.clientWidth + props.left - props.width
 
   if (props.top >= 0) y.value = props.top
-  else y.value = document.body.clientHeight + props.top - realHeight.value
+  else y.value = document.body.clientHeight + props.top - (props.height || realHeight.value)
 
   w.value = props.width
   h.value = props.height
+
+  zIndex.value = initGlobalZIndex()
 })
+
+onUnmounted(() => {
+  onPanelClose()
+})
+
+const bringToFrontPanel = (e: MouseEvent) => {
+  if (!props.moveable) return
+
+  e.stopPropagation()
+  zIndex.value = bringToFront()
+}
 
 const startMove = (e: MouseEvent) => {
   if (!props.moveable) return
+
+  zIndex.value = bringToFront()
 
   let isMouseDown = true
 
@@ -167,7 +239,6 @@ const startResize = (e: MouseEvent) => {
   border-radius: $borderRadius;
   display: flex;
   flex-direction: column;
-  z-index: 999;
 }
 .resizer {
   width: 10px;
@@ -195,6 +266,7 @@ const startResize = (e: MouseEvent) => {
   display: flex;
   align-items: center;
   border-bottom: 1px solid #f0f0f0;
+  user-select: none;
   cursor: move;
 }
 .title {
@@ -211,6 +283,10 @@ const startResize = (e: MouseEvent) => {
   color: #666;
   font-size: 13px;
   cursor: pointer;
+
+  &:hover {
+    color: $themeColor;
+  }
 }
 .content {
   flex: 1;

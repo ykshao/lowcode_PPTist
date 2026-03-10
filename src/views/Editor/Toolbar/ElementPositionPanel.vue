@@ -2,32 +2,33 @@
   <div class="element-positopn-panel">
     <div class="title">层级：</div>
     <ButtonGroup class="row">
-      <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.TOP)"><IconSendToBack class="btn-icon" /> 置顶</Button>
-      <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.BOTTOM)"><IconBringToFrontOne class="btn-icon" /> 置底</Button>
+      <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.TOP)"><i-icon-park-outline:send-to-back /> 置顶</Button>
+      <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.BOTTOM)"><i-icon-park-outline:bring-to-front-one /> 置底</Button>
     </ButtonGroup>
     <ButtonGroup class="row">
-      <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.UP)"><IconBringToFront class="btn-icon" /> 上移</Button>
-      <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.DOWN)"><IconSentToBack class="btn-icon" /> 下移</Button>
+      <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.UP)"><i-icon-park-outline:BringToFront /> 上移</Button>
+      <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.DOWN)"><i-icon-park-outline:SentToBack /> 下移</Button>
     </ButtonGroup>
 
     <Divider />
     
     <div class="title">对齐：</div>
     <ButtonGroup class="row">
-      <Button style="flex: 1;" v-tooltip="'左对齐'" @click="alignElementToCanvas(ElementAlignCommands.LEFT)"><IconAlignLeft /></Button>
-      <Button style="flex: 1;" v-tooltip="'水平居中'" @click="alignElementToCanvas(ElementAlignCommands.HORIZONTAL)"><IconAlignVertically /></Button>
-      <Button style="flex: 1;" v-tooltip="'右对齐'" @click="alignElementToCanvas(ElementAlignCommands.RIGHT)"><IconAlignRight /></Button>
+      <Button style="flex: 1;" v-tooltip="'左对齐'" @click="alignElementToCanvas(ElementAlignCommands.LEFT)"><i-icon-park-outline:align-left /></Button>
+      <Button style="flex: 1;" v-tooltip="'水平居中'" @click="alignElementToCanvas(ElementAlignCommands.HORIZONTAL)"><i-icon-park-outline:align-vertically /></Button>
+      <Button style="flex: 1;" v-tooltip="'右对齐'" @click="alignElementToCanvas(ElementAlignCommands.RIGHT)"><i-icon-park-outline:align-right /></Button>
     </ButtonGroup>
     <ButtonGroup class="row">
-      <Button style="flex: 1;" v-tooltip="'上对齐'" @click="alignElementToCanvas(ElementAlignCommands.TOP)"><IconAlignTop /></Button>
-      <Button style="flex: 1;" v-tooltip="'垂直居中'" @click="alignElementToCanvas(ElementAlignCommands.VERTICAL)"><IconAlignHorizontally /></Button>
-      <Button style="flex: 1;" v-tooltip="'下对齐'" @click="alignElementToCanvas(ElementAlignCommands.BOTTOM)"><IconAlignBottom /></Button>
+      <Button style="flex: 1;" v-tooltip="'上对齐'" @click="alignElementToCanvas(ElementAlignCommands.TOP)"><i-icon-park-outline:align-top /></Button>
+      <Button style="flex: 1;" v-tooltip="'垂直居中'" @click="alignElementToCanvas(ElementAlignCommands.VERTICAL)"><i-icon-park-outline:align-horizontally /></Button>
+      <Button style="flex: 1;" v-tooltip="'下对齐'" @click="alignElementToCanvas(ElementAlignCommands.BOTTOM)"><i-icon-park-outline:align-bottom /></Button>
     </ButtonGroup>
 
     <Divider />
 
     <div class="row">
       <NumberInput
+        :min="-1000"
         :step="5"
         :value="left"
         @update:value="value => updateLeft(value)"
@@ -39,6 +40,7 @@
       </NumberInput>
       <div style="width: 10%;"></div>
       <NumberInput
+        :min="-1000"
         :step="5"
         :value="top"
         @update:value="value => updateTop(value)"
@@ -66,8 +68,10 @@
           </template>
         </NumberInput>
         <template v-if="['image', 'shape', 'audio'].includes(handleElement!.type)">
-          <IconLock style="width: 10%;" class="icon-btn active" v-tooltip="'解除宽高比锁定'" @click="updateFixedRatio(false)" v-if="fixedRatio" />
-          <IconUnlock style="width: 10%;" class="icon-btn" v-tooltip="'宽高比锁定'" @click="updateFixedRatio(true)" v-else />
+          <span style="width: 10%;" class="icon-btn" :class="{ 'active': fixedRatio }" v-tooltip="fixedRatio ? '解除宽高比锁定' : '宽高比锁定'" @click="updateFixedRatio(!fixedRatio)">
+            <i-icon-park-outline:lock v-if="fixedRatio" />
+            <i-icon-park-outline:unlock v-else />
+          </span>
         </template>
         <div style="width: 10%;" v-else></div>
         <NumberInput 
@@ -103,8 +107,8 @@
           </template>
         </NumberInput>
         <div style="width: 7%;"></div>
-        <div class="text-btn" @click="updateRotate45('-')" style="width: 24%;"><IconRotate /> -45°</div>
-        <div class="text-btn" @click="updateRotate45('+')"  style="width: 24%;"><IconRotate :style="{ transform: 'rotateY(180deg)' }" /> +45°</div>
+        <div class="text-btn" @click="updateRotate45('-')" style="width: 24%;"><i-icon-park-outline:rotate /> -45°</div>
+        <div class="text-btn" @click="updateRotate45('+')"  style="width: 24%;"><i-icon-park-outline:rotate :style="{ transform: 'rotateY(180deg)' }" /> +45°</div>
       </div>
     </template>
   </div>
@@ -290,10 +294,9 @@ const updateRotate45 = (command: '+' | '-') => {
 .label {
   text-align: center;
 }
-.btn-icon {
-  margin-right: 3px;
-}
 .icon-btn {
+  display: inline-block;
+  text-align: center;
   cursor: pointer;
 
   &.active {

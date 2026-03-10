@@ -5,14 +5,19 @@
       <FileInput @change="files => setVideoPoster(files)">
         <div class="background-image">
           <div class="content" :style="{ backgroundImage: handleVideoElement.poster ? `url(${handleVideoElement.poster})` : '' }">
-            <IconPlus />
+            <i-icon-park-outline:plus />
           </div>
         </div>
       </FileInput>
     </div>
     <div class="row">
-      <Button style="flex: 1;" @click="updateVideo({ poster: '' })">重置封面</Button>
+      <Button style="flex: 1;" @click="setVideoPosterFromFirstFrame()"><i-icon-park-outline:screenshot-one /> 设置首帧为封面</Button>
     </div>
+    <div class="row" v-if="handleVideoElement.poster">
+      <Button style="flex: 1;" @click="updateVideo({ poster: '' })"><i-icon-park-outline:undo /> 重置封面</Button>
+    </div>
+
+    <Divider />
 
     <div class="row switch-row">
       <div style="width: 40%;">自动播放：</div>
@@ -37,6 +42,7 @@ import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 import FileInput from '@/components/FileInput.vue'
 import Button from '@/components/Button.vue'
 import Switch from '@/components/Switch.vue'
+import Divider from '@/components/Divider.vue'
 
 const slidesStore = useSlidesStore()
 const { handleElement } = storeToRefs(useMainStore())
@@ -56,6 +62,37 @@ const setVideoPoster = (files: FileList) => {
   const imageFile = files[0]
   if (!imageFile) return
   getImageDataURL(imageFile).then(dataURL => updateVideo({ poster: dataURL }))
+}
+
+// 获取视频首帧作为预览封面
+const setVideoPosterFromFirstFrame = () => {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+
+  const video = document.createElement('video')
+  video.crossOrigin = 'anonymous'
+  video.preload = 'metadata'
+  video.muted = true
+  video.playsInline = true
+
+  video.addEventListener('error', () => {
+    updateVideo({ poster: '' })
+  })
+
+  video.addEventListener('loadedmetadata', () => {
+    video!.requestVideoFrameCallback(() => {
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      ctx!.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+      const poster = canvas.toDataURL('image/jpeg', 0.8)
+      video.remove()
+      canvas.remove()
+      updateVideo({ poster })
+    })
+  }, { once: true })
+
+  video.src = handleVideoElement.value.src
 }
 </script>
 

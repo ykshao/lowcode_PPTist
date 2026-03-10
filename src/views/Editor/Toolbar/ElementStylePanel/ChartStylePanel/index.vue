@@ -1,7 +1,7 @@
 <template>
   <div class="chart-style-panel">
     <Button class="full-width-btn" @click="chartDataEditorVisible = true">
-      <IconEdit class="btn-icon" /> 编辑图表
+      <i-icon-park-outline:edit /> 编辑图表
     </Button>
 
     <Divider />
@@ -30,71 +30,71 @@
         <template #content>
           <ColorPicker
             :modelValue="fill"
-            @update:modelValue="value => updateFill(value)"
+            @update:modelValue="value => updateElement({ fill: value })"
           />
         </template>
         <ColorButton :color="fill" />
       </Popover>
     </div>
     <div class="row">
-      <div style="width: 40%;">文字颜色：</div>
+      <div style="width: 40%;">坐标与文字：</div>
       <Popover trigger="click" style="width: 60%;">
         <template #content>
           <ColorPicker
             :modelValue="textColor"
-            @update:modelValue="value => updateTextColor(value)"
+            @update:modelValue="value => updateElement({ textColor: value })"
           />
         </template>
         <ColorButton :color="textColor" />
       </Popover>
     </div>
-
-    <Divider />
-
-    <div class="row" v-for="(color, index) in themeColors" :key="index">
-      <div style="width: 40%;">{{index === 0 ? '主题配色：' : ''}}</div>
+    <div class="row">
+      <div style="width: 40%;">网格颜色：</div>
       <Popover trigger="click" style="width: 60%;">
         <template #content>
           <ColorPicker
-            :modelValue="color"
-            @update:modelValue="value => updateTheme(value, index)"
+            :modelValue="lineColor"
+            @update:modelValue="value => updateElement({ lineColor: value })"
           />
         </template>
-        <div class="color-btn-wrap" style="width: 100%;">
-          <ColorButton :color="color" />
-          <div class="delete-color-btn" v-tooltip="'删除'" @click.stop="deleteThemeColor(index)" v-if="index !== 0"><IconCloseSmall /></div>
-        </div>
+        <ColorButton :color="lineColor" />
       </Popover>
     </div>
-    <ButtonGroup class="row" passive>
-      <Popover trigger="click" v-model:open="presetThemesVisible" style="width: 40%;">
+
+    <div class="row">
+      <div style="width: 40%;">主题配色：</div>
+      <Popover trigger="click" v-model:value="themesVisible" style="width: 60%;">
         <template #content>
-          <div class="preset-themes">
-            <div class="preset-theme" v-for="(item, index) in CHART_PRESET_THEMES" :key="index">
-              <div 
-                class="preset-theme-color" 
-                :class="{ 'select': presetThemeColorHoverIndex[0] === index && itemIndex <= presetThemeColorHoverIndex[1] }"
-                v-for="(color, itemIndex) in item" 
-                :key="color" 
-                :style="{ backgroundColor: color }" 
-                @click="applyPresetTheme(item, itemIndex)"
-                @mouseenter="presetThemeColorHoverIndex = [index, itemIndex]"
-                @mouseleave="presetThemeColorHoverIndex = [-1, -1]"
-              ></div>
+          <div class="themes">
+            <div class="label">预置图表主题：</div>
+            <div class="preset-themes">
+              <div class="preset-theme" v-for="(item, index) in CHART_PRESET_THEMES" :key="index" @click="setThemeColors(item)">
+                <div 
+                  class="preset-theme-color"
+                  v-for="color in item" 
+                  :key="color" 
+                  :style="{ backgroundColor: color }" 
+                ></div>
+              </div>
             </div>
+            <div class="label">幻灯片主题：</div>
+            <div class="preset-themes" :style="{ marginBottom: '-10px' }">
+              <div class="preset-theme" @click="setThemeColors(theme.themeColors)">
+                <div 
+                  class="preset-theme-color"
+                  v-for="color in theme.themeColors" 
+                  :key="color" 
+                  :style="{ backgroundColor: color }" 
+                ></div>
+              </div>
+            </div>
+            <Divider :margin="10" />
+            <Button class="full-width-btn" @click="themesVisible = false; themeColorsSettingVisible = true">自定义配色</Button>
           </div>
         </template>
-        <Button first style="width: 100%;">推荐主题</Button>
+        <ColorListButton :colors="themeColors" />
       </Popover>
-      <Button
-        last
-        :disabled="themeColors.length >= 10" 
-        style="width: 60%;" 
-        @click="addThemeColor()"
-      >
-        <IconPlus class="btn-icon" /> 添加主题色
-      </Button>
-    </ButtonGroup>
+    </div>
 
     <Divider />
 
@@ -111,6 +111,14 @@
         @save="value => updateData(value)"
       />
     </Modal>
+
+    <Modal
+      v-model:visible="themeColorsSettingVisible" 
+      :width="310"
+      @closed="themeColorsSettingVisible = false"
+    >
+      <ThemeColorsSetting :colors="themeColors" @update="colors => setThemeColors(colors)" />
+    </Modal>
   </div>
 </template>
 
@@ -125,13 +133,14 @@ import { CHART_PRESET_THEMES } from '@/configs/chart'
 
 import ElementOutline from '../../common/ElementOutline.vue'
 import ChartDataEditor from './ChartDataEditor.vue'
+import ThemeColorsSetting from './ThemeColorsSetting.vue'
 import ColorButton from '@/components/ColorButton.vue'
+import ColorListButton from '@/components/ColorListButton.vue'
 import ColorPicker from '@/components/ColorPicker/index.vue'
 import Modal from '@/components/Modal.vue'
 import Divider from '@/components/Divider.vue'
 import Checkbox from '@/components/Checkbox.vue'
 import Button from '@/components/Button.vue'
-import ButtonGroup from '@/components/ButtonGroup.vue'
 import Popover from '@/components/Popover.vue'
 
 const mainStore = useMainStore()
@@ -142,8 +151,8 @@ const { theme } = storeToRefs(slidesStore)
 const handleChartElement = handleElement as Ref<PPTChartElement>
 
 const chartDataEditorVisible = ref(false)
-const presetThemesVisible = ref(false)
-const presetThemeColorHoverIndex = ref<[number, number]>([-1, -1])
+const themesVisible = ref(false)
+const themeColorsSettingVisible = ref(false)
 
 const { addHistorySnapshot } = useHistorySnapshot()
 
@@ -151,6 +160,7 @@ const fill = ref<string>('#000')
 
 const themeColors = ref<string[]>([])
 const textColor = ref('')
+const lineColor = ref('')
 const lineSmooth = ref(false)
 const stack = ref(false)
 
@@ -173,6 +183,7 @@ watch(handleElement, () => {
 
   themeColors.value = handleElement.value.themeColors
   textColor.value = handleElement.value.textColor || '#333'
+  lineColor.value = handleElement.value.lineColor || '#e8ecf4'
 }, { deep: true, immediate: true })
 
 const updateElement = (props: Partial<PPTChartElement>) => {
@@ -189,11 +200,6 @@ const updateData = (payload: {
   updateElement({ data: payload.data, chartType: payload.type })
 }
 
-// 设置填充色
-const updateFill = (value: string) => {
-  updateElement({ fill: value })
-}
-
 // 设置扩展选项
 const updateOptions = (optionProps: ChartOptions) => {
   const _handleElement = handleElement.value as PPTChartElement
@@ -202,40 +208,11 @@ const updateOptions = (optionProps: ChartOptions) => {
   updateElement({ options: newOptions })
 }
 
-// 设置主题色
-const updateTheme = (color: string, index: number) => {
-  const props = {
-    themeColors: themeColors.value.map((c, i) => i === index ? color : c),
-  }
-  updateElement(props)
-}
-
-// 添加主题色
-const addThemeColor = () => {
-  const props = {
-    themeColors: [...themeColors.value, theme.value.themeColor],
-  }
-  updateElement(props)
-}
-
 // 使用预置主题配色
-const applyPresetTheme = (colors: string[], index: number) => {
-  const themeColors = colors.slice(0, index + 1)
-  updateElement({ themeColors })
-  presetThemesVisible.value = false
-}
-
-// 删除主题色
-const deleteThemeColor = (index: number) => {
-  const props = {
-    themeColors: themeColors.value.filter((c, i) => i !== index),
-  }
-  updateElement(props)
-}
-
-// 设置文字颜色
-const updateTextColor = (textColor: string) => {
-  updateElement({ textColor })
+const setThemeColors = (colors: string[]) => {
+  updateElement({ themeColors: colors })
+  themesVisible.value = false
+  themeColorsSettingVisible.value = false
 }
 
 const openDataEditor = () => chartDataEditorVisible.value = true
@@ -259,44 +236,31 @@ onUnmounted(() => {
 .full-width-btn {
   width: 100%;
 }
-.btn-icon {
-  margin-right: 3px;
-}
-.color-btn-wrap {
-  position: relative;
-}
-.delete-color-btn {
-  position: absolute;
-  width: 30px;
-  right: 2px;
-  top: 2px;
-  bottom: 2px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #fff;
-  cursor: pointer;
+.label {
+  font-size: 12px;
+  margin-bottom: 4px;
 }
 .preset-themes {
   width: 250px;
   display: flex;
-  margin-bottom: -10px;
 
   @include flex-grid-layout();
 }
 .preset-theme {
   display: flex;
   cursor: pointer;
-
+  border: 1px solid #ccc;
+  padding: 2px;
+  border-radius: $borderRadius;
   @include flex-grid-layout-children(2, 48%);
+
+  &:hover {
+    border-color: $themeColor;
+    transition: border-color $transitionDelayFast;
+  }
 }
 .preset-theme-color {
-  width: 20px;
   height: 20px;
-
-  &.select {
-    transform: scale(1.2);
-    transition: transform $transitionDelayFast;
-  }
+  flex: 1;
 }
 </style>

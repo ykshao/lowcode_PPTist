@@ -3,25 +3,57 @@
     <div class="left">
       <Popover trigger="click" placement="bottom-start" v-model:value="mainMenuVisible">
         <template #content>
-          <FileInput accept=".pptist"  @change="files => {
-            importSpecificFile(files)
-            mainMenuVisible = false
-          }">
-            <PopoverMenuItem>导入 pptist 文件</PopoverMenuItem>
-          </FileInput>
-          <FileInput accept="application/vnd.openxmlformats-officedocument.presentationml.presentation"  @change="files => {
-            importPPTXFile(files)
-            mainMenuVisible = false
-          }">
-            <PopoverMenuItem>导入 pptx 文件（测试版）</PopoverMenuItem>
-          </FileInput>
-          <PopoverMenuItem @click="setDialogForExport('pptx')">导出文件</PopoverMenuItem>
-          <PopoverMenuItem @click="resetSlides(); mainMenuVisible = false">重置幻灯片</PopoverMenuItem>
-          <PopoverMenuItem @click="goLink('https://github.com/pipipi-pikachu/PPTist/issues')">意见反馈</PopoverMenuItem>
-          <PopoverMenuItem @click="goLink('https://github.com/pipipi-pikachu/PPTist/blob/master/doc/Q&A.md')">常见问题</PopoverMenuItem>
-          <PopoverMenuItem @click="mainMenuVisible = false; hotkeyDrawerVisible = true">快捷操作</PopoverMenuItem>
+          <div class="main-menu">
+            <div class="ai-menu" @click="openAIPPTDialog(); mainMenuVisible = false">
+              <div class="icon"><i-custom:click /></div>
+              <div class="aippt-content">
+                <div class="aippt"><span>AIPPT</span></div>
+                <div class="aippt-subtitle">输入一句话，智能生成演示文稿</div>
+              </div>
+            </div>
+          </div>
+          <Divider :margin="10" />
+          <div class="import-section">
+            <div class="import-label">导入文件</div>
+            <div class="import-grid">
+              <FileInput class="import-block" accept="application/vnd.openxmlformats-officedocument.presentationml.presentation" @change="files => {
+                importPPTXFile(files)
+                mainMenuVisible = false
+              }">
+                <span class="icon"><i-custom:file-ppt /></span>
+                <span class="label">PPTX</span>
+                <span class="sub-label">（仅供测试）</span>
+              </FileInput>
+              <FileInput class="import-block" accept=".json" @change="files => {
+                importJSON(files)
+                mainMenuVisible = false
+              }">
+                <span class="icon"><i-custom:file-jpg /></span>
+                <span class="label">JSON</span>
+                <span class="sub-label">（仅供测试）</span>
+              </FileInput>
+              <FileInput class="import-block" accept=".pptist" @change="files => {
+                importSpecificFile(files)
+                mainMenuVisible = false
+              }">
+                <span class="icon"><i-custom:file-pptist /></span>
+                <span class="label">PPTIST</span>
+                <span class="sub-label">（专属格式）</span>
+              </FileInput>
+            </div>
+          </div>
+          <Divider :margin="10" />
+          <PopoverMenuItem class="popover-menu-item" @click="setDialogForExport('pptx')"><i-icon-park-outline:download class="icon" /> 导出文件</PopoverMenuItem>
+          <Divider :margin="10" />
+          <PopoverMenuItem class="popover-menu-item" @click="resetSlides(); mainMenuVisible = false"><i-icon-park-outline:refresh class="icon" /> 重置幻灯片</PopoverMenuItem>
+          <PopoverMenuItem class="popover-menu-item" @click="openMarkupPanel(); mainMenuVisible = false"><i-icon-park-outline:mark class="icon" /> 幻灯片类型标注</PopoverMenuItem>
+          <PopoverMenuItem class="popover-menu-item" @click="mainMenuVisible = false; hotkeyDrawerVisible = true"><i-icon-park-outline:command class="icon" /> 快捷操作</PopoverMenuItem>
+          <PopoverMenuItem class="popover-menu-item" @click="goLink('https://github.com/pipipi-pikachu/PPTist/issues')"><i-icon-park-outline:comment class="icon" /> 意见反馈</PopoverMenuItem>
+          <PopoverMenuItem class="popover-menu-item" @click="goLink('https://github.com/pipipi-pikachu/PPTist/blob/master/doc/Q&A.md')"><i-icon-park-outline:helpcenter class="icon" /> 常见问题</PopoverMenuItem>
+          <Divider :margin="10" />
+          <div class="statement">注：本站仅作测试/演示，不提供任何形式的服务</div>
         </template>
-        <div class="menu-item"><IconHamburgerButton class="icon" /></div>
+        <div class="menu-item"><i-icon-park-outline:hamburger-button class="icon" /></div>
       </Popover>
 
       <div class="title">
@@ -44,21 +76,24 @@
     <div class="right">
       <div class="group-menu-item">
         <div class="menu-item" v-tooltip="'幻灯片放映（F5）'" @click="enterScreening()">
-          <IconPpt class="icon" />
+          <i-icon-park-outline:ppt class="icon" />
         </div>
         <Popover trigger="click" center>
           <template #content>
-            <PopoverMenuItem @click="enterScreeningFromStart()">从头开始</PopoverMenuItem>
-            <PopoverMenuItem @click="enterScreening()">从当前页开始</PopoverMenuItem>
+            <PopoverMenuItem class="popover-menu-item" @click="enterScreeningFromStart()"><i-icon-park-outline:slide-two class="icon" /> 从头开始</PopoverMenuItem>
+            <PopoverMenuItem class="popover-menu-item" @click="enterScreening()"><i-icon-park-outline:ppt class="icon" /> 从当前页开始</PopoverMenuItem>
           </template>
-          <div class="arrow-btn"><IconDown class="arrow" /></div>
+          <div class="arrow-btn"><i-icon-park-outline:down class="arrow" /></div>
         </Popover>
       </div>
+      <div class="menu-item" v-tooltip="'AI生成PPT'" @click="openAIPPTDialog(); mainMenuVisible = false">
+        <span class="text ai">AI</span>
+      </div>
       <div class="menu-item" v-tooltip="'导出'" @click="setDialogForExport('pptx')">
-        <IconDownload class="icon" />
+        <i-icon-park-outline:download class="icon" />
       </div>
       <a class="github-link" v-tooltip="'Copyright © 2020-PRESENT pipipi-pikachu'" href="https://github.com/pipipi-pikachu/PPTist" target="_blank">
-        <div class="menu-item"><IconGithub class="icon" /></div>
+        <div class="menu-item"><i-icon-park-outline:github class="icon" /></div>
       </a>
     </div>
 
@@ -76,7 +111,7 @@
 </template>
 
 <script lang="ts" setup>
-import { nextTick, ref } from 'vue'
+import { nextTick, ref, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
 import useScreening from '@/hooks/useScreening'
@@ -91,19 +126,20 @@ import Drawer from '@/components/Drawer.vue'
 import Input from '@/components/Input.vue'
 import Popover from '@/components/Popover.vue'
 import PopoverMenuItem from '@/components/PopoverMenuItem.vue'
+import Divider from '@/components/Divider.vue'
 
 const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
 const { title } = storeToRefs(slidesStore)
 const { enterScreening, enterScreeningFromStart } = useScreening()
-const { importSpecificFile, importPPTXFile, exporting } = useImport()
+const { importSpecificFile, importPPTXFile, importJSON, exporting } = useImport()
 const { resetSlides } = useSlideHandler()
 
 const mainMenuVisible = ref(false)
 const hotkeyDrawerVisible = ref(false)
 const editingTitle = ref(false)
-const titleInputRef = ref<InstanceType<typeof Input>>()
 const titleValue = ref('')
+const titleInputRef = useTemplateRef<InstanceType<typeof Input>>('titleInputRef')
 
 const startEditTitle = () => {
   titleValue.value = title.value
@@ -124,6 +160,14 @@ const goLink = (url: string) => {
 const setDialogForExport = (type: DialogForExportTypes) => {
   mainStore.setDialogForExport(type)
   mainMenuVisible.value = false
+}
+
+const openMarkupPanel = () => {
+  mainStore.setMarkupPanelState(true)
+}
+
+const openAIPPTDialog = () => {
+  mainStore.setAIPPTDialogState(true)
 }
 </script>
 
@@ -155,11 +199,117 @@ const setDialogForExport = (type: DialogForExportTypes) => {
     font-size: 18px;
     color: #666;
   }
+  .text {
+    width: 18px;
+    text-align: center;
+    font-size: 17px;
+  }
+  .ai {
+    background: linear-gradient(270deg, #d897fd, #33bcfc);
+    background-clip: text;
+    color: transparent;
+    font-weight: 700;
+  }
 
   &:hover {
     background-color: #f1f1f1;
   }
 }
+.popover-menu-item {
+  display: flex;
+  padding: 8px 10px;
+
+  .icon {
+    font-size: 18px;
+    margin-right: 10px;
+  }
+}
+.statement {
+  font-size: 12px;
+  color: #999;
+  padding: 8px 10px;
+  font-style: italic;
+}
+.main-menu {
+  width: 300px;
+}
+.ai-menu {
+  background: linear-gradient(270deg, #f8edff, #d4f1ff);
+  color: $themeColor;
+  border-radius: $borderRadius;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+
+  .icon {
+    font-size: 22px;
+    margin-right: 16px;
+  }
+  .aippt-content {
+    display: flex;
+    flex-direction: column;
+  }
+  .aippt {
+    font-weight: 700;
+    font-size: 16px;
+
+    span {
+      background: linear-gradient(270deg, #d897fd, #33bcfc);
+      background-clip: text;
+      color: transparent;
+    }
+  }
+  .aippt-subtitle {
+    font-size: 12px;
+    color: #777;
+    margin-top: 5px;
+  }
+}
+
+.import-section {
+  padding: 5px 0;
+
+  .import-label {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 6px;
+  }
+  .import-grid {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+  }
+  .import-block {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px;
+    border-radius: $borderRadius;
+    border: 1px solid $borderColor;
+    transition: background-color .2s;
+    cursor: pointer;
+  
+    &:hover {
+      background-color: #f1f1f1;
+    }
+    .icon {
+      font-size: 24px;
+      margin-bottom: 2px;
+    }
+    .label {
+      font-size: 12px;
+      text-align: center;
+    }
+    .sub-label {
+      font-size: 10px;
+      color: #999;
+    }
+  }
+}
+
 .group-menu-item {
   height: 30px;
   display: flex;

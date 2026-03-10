@@ -4,6 +4,7 @@ import { useSlidesStore } from '@/store'
 import type { Slide } from '@/types/slides'
 import type { PresetTheme } from '@/configs/theme'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
+import { getLineElementLength } from '@/utils/element'
 
 interface ThemeValueWithArea {
   area: number
@@ -12,7 +13,7 @@ interface ThemeValueWithArea {
 
 export default () => {
   const slidesStore = useSlidesStore()
-  const { slides, currentSlide, theme } = storeToRefs(slidesStore)
+  const { slides, theme } = storeToRefs(slidesStore)
 
   const { addHistorySnapshot } = useHistorySnapshot()
 
@@ -148,9 +149,16 @@ export default () => {
         }
         else if (el.type === 'chart') {
           if (el.fill) {
-            themeColorValues.push({ area: area * 0.5, value: el.fill })
+            themeColorValues.push({ area: area * 0.6, value: el.fill })
           }
-          themeColorValues.push({ area: area * 0.5, value: el.themeColors[0] })
+          if (el.themeColors[0]) {
+            themeColorValues.push({ area: area * 0.3, value: el.themeColors[0] })
+          }
+          for (const color of el.themeColors) {
+            if (tinycolor(color).getAlpha() !== 0) {
+              themeColorValues.push({ area: area / el.themeColors.length * 0.1, value: color })
+            }
+          }
         }
         else if (el.type === 'line') {
           themeColorValues.push({ area, value: el.color })
@@ -164,7 +172,7 @@ export default () => {
       }
     }
     
-    const backgroundColors: { [key: string]: number } = {}
+    const backgroundColors: Record<string, number> = {}
     for (const item of backgroundColorValues) {
       const color = tinycolor(item.value).toRgbString()
       if (color === 'rgba(0, 0, 0, 0)') continue
@@ -172,7 +180,7 @@ export default () => {
       else backgroundColors[color] += item.area
     }
 
-    const themeColors: { [key: string]: number } = {}
+    const themeColors: Record<string, number> = {}
     for (const item of themeColorValues) {
       const color = tinycolor(item.value).toRgbString()
       if (color === 'rgba(0, 0, 0, 0)') continue
@@ -180,7 +188,7 @@ export default () => {
       else themeColors[color] += item.area
     }
 
-    const fontColors: { [key: string]: number } = {}
+    const fontColors: Record<string, number> = {}
     for (const item of fontColorValues) {
       const color = tinycolor(item.value).toRgbString()
       if (color === 'rgba(0, 0, 0, 0)') continue
@@ -188,7 +196,7 @@ export default () => {
       else fontColors[color] += item.area
     }
   
-    const fontNames: { [key: string]: number } = {}
+    const fontNames: Record<string, number> = {}
     for (const item of fontNameValues) {
       if (!fontNames[item.value]) fontNames[item.value] = item.area
       else fontNames[item.value] += item.area
@@ -202,42 +210,58 @@ export default () => {
     }
   }
 
-  // 获取指定幻灯片内所有颜色（主要的）
+  // 获取指定幻灯片内的主要颜色（忽略透明度），并按颜色面积排序
   const getSlideAllColors = (slide: Slide) => {
-    const colors: string[] = []
+    const colorMap: Record<string, number> = {}
+
+    const record = (color: string, area: number) => {
+      const _color = tinycolor(color).setAlpha(1).toRgbString()
+      if (!colorMap[_color]) colorMap[_color] = area
+      else colorMap[_color] = colorMap[_color] + area
+    }
+
     for (const el of slide.elements) {
+      const width = el.width
+      const height = el.type === 'line' ? getLineElementLength(el) : el.height
+      const area = width * height
+
       if (el.type === 'shape' && tinycolor(el.fill).getAlpha() !== 0) {
-        const color = tinycolor(el.fill).toRgbString()
-        if (!colors.includes(color)) colors.push(color)
+        record(el.fill, area)
       }
       if (el.type === 'text' && el.fill && tinycolor(el.fill).getAlpha() !== 0) {
-        const color = tinycolor(el.fill).toRgbString()
-        if (!colors.includes(color)) colors.push(color)
+        record(el.fill, area)
+      }
+      if (el.type === 'image' && el.colorMask && tinycolor(el.colorMask).getAlpha() !== 0) {
+        record(el.colorMask, area)
       }
       if (el.type === 'table' && el.theme && tinycolor(el.theme.color).getAlpha() !== 0) {
-        const color = tinycolor(el.theme.color).toRgbString()
-        if (!colors.includes(color)) colors.push(color)
+        record(el.theme.color, area)
       }
-      if (el.type === 'chart' && el.themeColors[0] && tinycolor(el.themeColors[0]).getAlpha() !== 0) {
-        const color = tinycolor(el.themeColors[0]).toRgbString()
-        if (!colors.includes(color)) colors.push(color)
+      if (el.type === 'chart') {
+        for (const color of el.themeColors) {
+          if (tinycolor(color).getAlpha() !== 0) {
+            record(color, area / el.themeColors.length * 0.1)
+          }
+        }
+        if (el.themeColors[0] && tinycolor(el.themeColors[0]).getAlpha() !== 0) record(el.themeColors[0], area * 0.3)
+        if (el.fill && tinycolor(el.fill).getAlpha() !== 0) record(el.fill, area * 0.6)
       }
       if (el.type === 'line' && tinycolor(el.color).getAlpha() !== 0) {
-        const color = tinycolor(el.color).toRgbString()
-        if (!colors.includes(color)) colors.push(color)
+        record(el.color, area)
       }
       if (el.type === 'audio' && tinycolor(el.color).getAlpha() !== 0) {
-        const color = tinycolor(el.color).toRgbString()
-        if (!colors.includes(color)) colors.push(color)
+        record(el.color, area)
       }
     }
+    const colors = Object.keys(colorMap).sort((a, b) => colorMap[b] - colorMap[a])
     return colors
   }
   
   // 创建原颜色与新颜色的对应关系表
-  const createSlideThemeColorMap = (slide: Slide, newColors: string[]): { [key: string]: string } => {
+  const createSlideThemeColorMap = (slide: Slide, _newColors: string[]): Record<string, string> => {
+    const newColors = [..._newColors]
     const oldColors = getSlideAllColors(slide)
-    const themeColorMap: { [key: string]: string } = {}
+    const themeColorMap: Record<string, string> = {}
   
     if (oldColors.length > newColors.length) {
       const analogous = tinycolor(newColors[0]).analogous(oldColors.length - newColors.length + 10)
@@ -254,6 +278,12 @@ export default () => {
   // 设置幻灯片主题
   const setSlideTheme = (slide: Slide, theme: PresetTheme) => {
     const colorMap = createSlideThemeColorMap(slide, theme.colors)
+
+    const getColor = (color: string) => {
+      const alpha = tinycolor(color).getAlpha()
+      const _color = colorMap[tinycolor(color).setAlpha(1).toRgbString()]
+      return _color ? tinycolor(_color).setAlpha(alpha).toRgbString() : color
+    }
   
     if (!slide.background || slide.background.type !== 'image') {
       slide.background = {
@@ -263,16 +293,25 @@ export default () => {
     }
     for (const el of slide.elements) {
       if (el.type === 'shape') {
-        el.fill = colorMap[tinycolor(el.fill).toRgbString()] || el.fill
+        if (el.fill) el.fill = getColor(el.fill)
         if (el.gradient) delete el.gradient
+        if (el.text) {
+          el.text.defaultColor = theme.fontColor
+          el.text.defaultFontName = theme.fontname
+          if (el.text.content) el.text.content = el.text.content.replace(/color: .+?;/g, '').replace(/font-family: .+?;/g, '')
+        }
       }
       if (el.type === 'text') {
-        if (el.fill) el.fill = colorMap[tinycolor(el.fill).toRgbString()] || el.fill
+        if (el.fill) el.fill = getColor(el.fill)
         el.defaultColor = theme.fontColor
         el.defaultFontName = theme.fontname
+        if (el.content) el.content = el.content.replace(/color: .+?;/g, '').replace(/font-family: .+?;/g, '')
+      }
+      if (el.type === 'image' && el.colorMask) {
+        el.colorMask = getColor(el.colorMask)
       }
       if (el.type === 'table') {
-        if (el.theme) el.theme.color = colorMap[tinycolor(el.theme.color).toRgbString()] || el.theme.color
+        if (el.theme) el.theme.color = getColor(el.theme.color)
         for (const rowCells of el.data) {
           for (const cell of rowCells) {
             if (cell.style) {
@@ -283,85 +322,93 @@ export default () => {
         }
       }
       if (el.type === 'chart') {
-        el.themeColors = [colorMap[tinycolor(el.themeColors[0]).toRgbString()]] || el.themeColors
+        el.themeColors = [...theme.colors]
         el.textColor = theme.fontColor
       }
-      if (el.type === 'line') el.color = colorMap[tinycolor(el.color).toRgbString()] || el.color
-      if (el.type === 'audio') el.color = colorMap[tinycolor(el.color).toRgbString()] || el.color
+      if (el.type === 'line') el.color = getColor(el.color)
+      if (el.type === 'audio') el.color = getColor(el.color)
       if (el.type === 'latex') el.color = theme.fontColor
+
+      if ('outline' in el && el.outline) {
+        if (theme.outline) el.outline = { ...theme.outline }
+        if (theme.borderColor) el.outline.color = theme.borderColor
+      }
+      if ('shadow' in el && el.shadow && theme.shadow) {
+        el.shadow = theme.shadow
+      }
     }
   }
   
-  // 应用预置主题（单页）
-  const applyPresetThemeToSingleSlide = (theme: PresetTheme) => {
-    const newSlide: Slide = JSON.parse(JSON.stringify(currentSlide.value))
-    setSlideTheme(newSlide, theme)
-    slidesStore.updateSlide({
-      background: newSlide.background,
-      elements: newSlide.elements,
-    })
-    addHistorySnapshot()
-  }
-  
-  // 应用预置主题（全部）
-  const applyPresetThemeToAllSlides = (theme: PresetTheme) => {
-    const newSlides: Slide[] = JSON.parse(JSON.stringify(slides.value))
-    for (const slide of newSlides) {
-      setSlideTheme(slide, theme)
-    }
+  // 应用预置主题
+  const applyPresetTheme = (theme: PresetTheme, resetSlides = false) => {
     slidesStore.setTheme({
       backgroundColor: theme.background,
-      themeColor: theme.colors[0],
+      themeColors: theme.colors,
       fontColor: theme.fontColor,
+      outline: {
+        width: 2,
+        style: 'solid',
+        color: theme.borderColor,
+      },
       fontName: theme.fontname,
     })
-    slidesStore.setSlides(newSlides)
-    addHistorySnapshot()
+
+    if (resetSlides) {
+      const newSlides: Slide[] = JSON.parse(JSON.stringify(slides.value))
+      for (const slide of newSlides) {
+        setSlideTheme(slide, theme)
+      }
+      slidesStore.setSlides(newSlides)
+      addHistorySnapshot()
+    }
   }
   
   // 将当前主题配置应用到全部页面
   const applyThemeToAllSlides = (applyAll = false) => {
     const newSlides: Slide[] = JSON.parse(JSON.stringify(slides.value))
-    const { themeColor, backgroundColor, fontColor, fontName, outline, shadow } = theme.value
+
+    const _theme: PresetTheme = {
+      background: theme.value.backgroundColor,
+      fontColor: theme.value.fontColor,
+      borderColor: applyAll ? theme.value.outline.color : undefined,
+      fontname: theme.value.fontName,
+      colors: theme.value.themeColors,
+      outline: applyAll ? theme.value.outline : undefined,
+      shadow: applyAll ? theme.value.shadow : undefined,
+    }
   
     for (const slide of newSlides) {
-      if (!slide.background || slide.background.type !== 'image') {
-        slide.background = {
-          type: 'solid',
-          color: backgroundColor
-        }
-      }
-  
-      for (const el of slide.elements) {
-        if (applyAll) {
-          if ('outline' in el && el.outline) el.outline = outline
-          if ('shadow' in el && el.shadow) el.shadow = shadow
-        }
+      setSlideTheme(slide, _theme)
+    }
+    slidesStore.setSlides(newSlides)
+    addHistorySnapshot()
+  }
 
-        if (el.type === 'shape') el.fill = themeColor
-        else if (el.type === 'line') el.color = themeColor
-        else if (el.type === 'text') {
-          el.defaultColor = fontColor
-          el.defaultFontName = fontName
-          if (el.fill) el.fill = themeColor
+  // 统一字体
+  const applyFontToAllSlides = (fontname: string) => {
+    const newSlides: Slide[] = JSON.parse(JSON.stringify(slides.value))
+
+    for (const slide of newSlides) {
+      for (const el of slide.elements) {
+        if (el.type === 'shape') {
+          if (el.text) {
+            el.text.defaultFontName = fontname
+            if (el.text.content) el.text.content = el.text.content.replace(/font-family: .+?;/g, '')
+          }
         }
-        else if (el.type === 'table') {
-          if (el.theme) el.theme.color = themeColor
+        if (el.type === 'text') {
+          el.defaultFontName = fontname
+          if (el.content) el.content = el.content.replace(/font-family: .+?;/g, '')
+        }
+        if (el.type === 'table') {
           for (const rowCells of el.data) {
             for (const cell of rowCells) {
               if (cell.style) {
-                cell.style.color = fontColor
-                cell.style.fontname = fontName
+                cell.style.fontname = fontname
               }
             }
           }
         }
-        else if (el.type === 'chart') {
-          el.themeColors = [themeColor]
-          el.textColor = fontColor
-        }
-        else if (el.type === 'latex') el.color = fontColor
-        else if (el.type === 'audio') el.color = themeColor
       }
     }
     slidesStore.setSlides(newSlides)
@@ -370,8 +417,8 @@ export default () => {
 
   return {
     getSlidesThemeStyles,
-    applyPresetThemeToSingleSlide,
-    applyPresetThemeToAllSlides,
+    applyPresetTheme,
     applyThemeToAllSlides,
+    applyFontToAllSlides,
   }
 }

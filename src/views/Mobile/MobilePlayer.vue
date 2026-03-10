@@ -20,10 +20,12 @@
             'current': index === slideIndex,
             'before': index < slideIndex,
             'after': index > slideIndex,
-            'hide': (index === slideIndex - 1 || index === slideIndex + 1) && slide.turningMode !== currentSlide.turningMode,
+            'hide': (index === slideIndex - 1 || index === slideIndex + 1) && slide.turningMode !== slidesWithTurningMode[slideIndex].turningMode,
+            'last': index === slideIndex - 1,
+            'next': index === slideIndex + 1,
           }
         ]"
-        v-for="(slide, index) in slides" 
+        v-for="(slide, index) in slidesWithTurningMode" 
         :key="slide.id"
       >
         <div 
@@ -44,7 +46,7 @@
 
     <template v-if="toolVisible">
       <div class="header">
-        <div class="back" @click="changeMode('preview')"><IconLogout /> 退出播放</div>
+        <div class="back" @click="changeMode('preview')"><i-icon-park-outline:logout /> 退出播放</div>
       </div>
       <MobileThumbnails class="thumbnails" />
     </template>
@@ -56,6 +58,7 @@ import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
 import type { Mode } from '@/types/mobile'
+import useSlidesWithTurningMode from '../Screen/hooks/useSlidesWithTurningMode'
 
 import ThumbnailSlide from '@/views/components/ThumbnailSlide/index.vue'
 import MobileThumbnails from './MobileThumbnails.vue'
@@ -65,7 +68,9 @@ defineProps<{
 }>()
 
 const slidesStore = useSlidesStore()
-const { slides, slideIndex, currentSlide, viewportRatio } = storeToRefs(slidesStore)
+const { slides, slideIndex, viewportRatio } = storeToRefs(slidesStore)
+
+const { slidesWithTurningMode } = useSlidesWithTurningMode()
 
 const toolVisible = ref(false)
 
@@ -111,14 +116,19 @@ const touchStartListener = (e: TouchEvent) => {
 const touchEndListener = (e: TouchEvent) => {
   if (!touchInfo.value) return
 
-  const offsetY = Math.abs(touchInfo.value.y - e.changedTouches[0].pageY)
   const offsetX = e.changedTouches[0].pageX - touchInfo.value.x
+  const offsetY = e.changedTouches[0].pageY - touchInfo.value.y
+  const offsetAbsX = Math.abs(offsetX)
+  const offsetAbsY = Math.abs(offsetY)
 
-  if ( Math.abs(offsetX) > offsetY && Math.abs(offsetX) > 50 ) {
-    touchInfo.value = null
-
+  if ( offsetAbsX > offsetAbsY && offsetAbsX > 50 ) {
     if (offsetX < 0 && slideIndex.value > 0) slidesStore.updateSlideIndex(slideIndex.value - 1)
     if (offsetX > 0 && slideIndex.value < slides.value.length - 1) slidesStore.updateSlideIndex(slideIndex.value + 1)
+  }
+
+  if ( offsetAbsY > offsetAbsX && offsetAbsY > 50 ) {
+    if (offsetY > 0 && slideIndex.value > 0) slidesStore.updateSlideIndex(slideIndex.value - 1)
+    if (offsetY < 0 && slideIndex.value < slides.value.length - 1) slidesStore.updateSlideIndex(slideIndex.value + 1)
   }
 }
 </script>
@@ -140,6 +150,10 @@ const touchEndListener = (e: TouchEvent) => {
   left: 0;
   width: 100%;
   height: 100%;
+
+  &:not(.last, .next) {
+    z-index: -1;
+  }
 
   &.current {
     z-index: 2;

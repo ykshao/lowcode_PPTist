@@ -8,7 +8,7 @@
     <ElementFlip />
 
     <ButtonGroup class="row" passive>
-      <Button first style="width: calc(100% / 6 * 5);" @click="clipImage()"><IconTailoring class="btn-icon" /> 裁剪图片</Button>
+      <Button first style="width: calc(100% / 6 * 5);" @click="clipImage()"><i-icon-park-outline:tailoring /> 裁剪图片</Button>
       <Popover trigger="click" v-model:value="clipPanelVisible" style="width: calc(100% / 6);">
         <template #content>
           <div class="clip">
@@ -37,7 +37,7 @@
             </template>
           </div>
         </template>
-        <Button last class="popover-btn" style="width: 100%;"><IconDown /></Button>
+        <Button last class="popover-btn" style="width: 100%;"><i-icon-park-outline:down /></Button>
       </Popover>
     </ButtonGroup>
     
@@ -61,10 +61,10 @@
     <Divider />
     
     <FileInput @change="files => replaceImage(files)">
-      <Button class="full-width-btn"><IconTransform class="btn-icon" /> 替换图片</Button>
+      <Button class="full-width-btn"><i-icon-park-outline:transform /> 替换图片</Button>
     </FileInput>
-    <Button class="full-width-btn" @click="resetImage()"><IconUndo class="btn-icon" /> 重置样式</Button>
-    <Button class="full-width-btn" @click="setBackgroundImage()"><IconTheme class="btn-icon" /> 设为背景</Button>
+    <Button class="full-width-btn" @click="resetImage()"><i-icon-park-outline:undo /> 重置样式</Button>
+    <Button class="full-width-btn" @click="setBackgroundImage()"><i-icon-park-outline:theme /> 设为背景</Button>
   </div>
 </template>
 
@@ -74,7 +74,7 @@ import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
 import type { PPTImageElement, SlideBackground } from '@/types/slides'
 import { CLIPPATHS } from '@/configs/imageClip'
-import { getImageDataURL } from '@/utils/image'
+import { getImageDataURL, getImageSize } from '@/utils/image'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 import ElementOutline from '../common/ElementOutline.vue'
@@ -222,8 +222,31 @@ const replaceImage = (files: FileList) => {
   const imageFile = files[0]
   if (!imageFile) return
   getImageDataURL(imageFile).then(dataURL => {
-    const props = { src: dataURL }
-    updateImage(props)
+    const originWidth = handleImageElement.value.width
+    const originHeight = handleImageElement.value.height
+    const originLeft = handleImageElement.value.left
+    const originTop = handleImageElement.value.top
+    const centerX = originLeft + originWidth / 2
+    const centerY = originTop + originHeight / 2
+
+    getImageSize(dataURL).then(({ width, height }) => {
+      const h = originHeight
+      const w = width * (originHeight / height)
+      const l = centerX - w / 2
+      const t = centerY - h / 2
+
+      slidesStore.removeElementProps({
+        id: handleElementId.value,
+        propName: 'clip',
+      })
+      updateImage({
+        src: dataURL,
+        width: w,
+        height: h,
+        left: l,
+        top: t,
+      })
+    })
   })
 }
 
@@ -249,7 +272,7 @@ const resetImage = () => {
 
   slidesStore.removeElementProps({
     id: handleElementId.value,
-    propName: ['clip', 'outline', 'flip', 'shadow', 'filters', 'colorMask'],
+    propName: ['clip', 'outline', 'flip', 'shadow', 'filters', 'colorMask', 'radius'],
   })
   addHistorySnapshot()
 }
@@ -293,12 +316,9 @@ const setBackgroundImage = () => {
   width: 100%;
   margin-bottom: 10px;
 }
-.btn-icon {
-  margin-right: 3px;
-}
 
 .clip {
-  width: 260px;
+  width: 250px;
   font-size: 12px;
 
   .title {

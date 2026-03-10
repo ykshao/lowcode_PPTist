@@ -12,56 +12,54 @@
 
     <div class="content">
       <div class="style" v-if="activeTab === 'style'">
-        <ButtonGroup class="row">
-          <CheckboxButton 
-            style="flex: 1;"
-            :checked="richTextAttrs.bold"
-            @click="emitRichTextCommand('bold')"
-          ><IconTextBold /></CheckboxButton>
-          <CheckboxButton 
-            style="flex: 1;"
-            :checked="richTextAttrs.em"
-            @click="emitRichTextCommand('em')"
-          ><IconTextItalic /></CheckboxButton>
-          <CheckboxButton 
-            style="flex: 1;"
-            :checked="richTextAttrs.underline"
-            @click="emitRichTextCommand('underline')"
-          ><IconTextUnderline /></CheckboxButton>
-          <CheckboxButton 
-            style="flex: 1;"
-            :checked="richTextAttrs.strikethrough"
-            @click="emitRichTextCommand('strikethrough')"
-          ><IconStrikethrough /></CheckboxButton>
-        </ButtonGroup>
+        <template v-if="textPropsEnable">
+          <ButtonGroup class="row">
+            <CheckboxButton 
+              style="flex: 1;"
+              :checked="richTextAttrs.bold"
+              @click="emitRichTextCommand('bold')"
+            ><i-icon-park-outline:text-bold /></CheckboxButton>
+            <CheckboxButton 
+              style="flex: 1;"
+              :checked="richTextAttrs.em"
+              @click="emitRichTextCommand('em')"
+            ><i-icon-park-outline:text-italic /></CheckboxButton>
+            <CheckboxButton 
+              style="flex: 1;"
+              :checked="richTextAttrs.underline"
+              @click="emitRichTextCommand('underline')"
+            ><i-icon-park-outline:text-underline /></CheckboxButton>
+            <CheckboxButton 
+              style="flex: 1;"
+              :checked="richTextAttrs.strikethrough"
+              @click="emitRichTextCommand('strikethrough')"
+            ><i-icon-park-outline:strikethrough /></CheckboxButton>
+          </ButtonGroup>
 
-        <ButtonGroup class="row">
-          <Button 
-            style="flex: 1;"
-            @click="emitRichTextCommand('fontsize-add')"
-          ><IconFontSize />+</Button>
-          <Button 
-            style="flex: 1;"
-            @click="emitRichTextCommand('fontsize-reduce')"
-          ><IconFontSize />-</Button>
-        </ButtonGroup>
-        
-        <Divider :margin="20" />
+          <ButtonGroup class="row">
+            <Button 
+              style="flex: 1;"
+              @click="emitRichTextCommand('fontsize-add')"
+            ><i-icon-park-outline:font-size />+</Button>
+            <Button 
+              style="flex: 1;"
+              @click="emitRichTextCommand('fontsize-reduce')"
+            ><i-icon-park-outline:font-size />-</Button>
+          </ButtonGroup>
 
-        <RadioGroup 
-          class="row" 
-          button-style="solid" 
-          :value="richTextAttrs.align"
-          @update:value="value => emitRichTextCommand('align', value)"
-        >
-          <RadioButton value="left" style="flex: 1;"><IconAlignTextLeft /></RadioButton>
-          <RadioButton value="center" style="flex: 1;"><IconAlignTextCenter /></RadioButton>
-          <RadioButton value="right" style="flex: 1;"><IconAlignTextRight /></RadioButton>
-        </RadioGroup>
-        
-        <Divider :margin="20" />
+          <RadioGroup 
+            class="row" 
+            button-style="solid" 
+            :value="richTextAttrs.align"
+            @update:value="value => emitRichTextCommand('align', value)"
+          >
+            <RadioButton value="left" style="flex: 1;"><i-icon-park-outline:align-text-left /></RadioButton>
+            <RadioButton value="center" style="flex: 1;"><i-icon-park-outline:align-text-center /></RadioButton>
+            <RadioButton value="right" style="flex: 1;"><i-icon-park-outline:align-text-right /></RadioButton>
+          </RadioGroup>
+        </template>
 
-        <div class="row-block">
+        <div class="row-block" v-if="textColorPropsEnable">
           <div class="label">文字颜色：</div>
           <div class="colors">
             <div class="color" 
@@ -71,9 +69,17 @@
             >
               <div class="color-block" :style="{ backgroundColor: color }"></div>
             </div>
+            <div class="color custom">
+              <Popover trigger="click">
+                <template #content>
+                  <ColorPicker :modelValue="fontColor" @update:modelValue="value => updateFontColor(value)" />
+                </template>
+                <div class="color-block"></div>
+              </Popover>
+            </div>
           </div>
         </div>
-        <div class="row-block">
+        <div class="row-block" v-if="fillPropsEnable">
           <div class="label">填充色：</div>
           <div class="colors">
             <div class="color" 
@@ -83,36 +89,46 @@
             >
               <div class="color-block" :style="{ backgroundColor: color }"></div>
             </div>
+            <div class="color custom">
+              <Popover trigger="click">
+                <template #content>
+                  <ColorPicker :modelValue="fill" @update:modelValue="value => updateFill(value)" />
+                </template>
+                <div class="color-block"></div>
+              </Popover>
+            </div>
           </div>
         </div>
+
+        <div class="tip" v-if="!textPropsEnable && !textColorPropsEnable && !fillPropsEnable">暂无可用属性</div>
       </div>
 
       <div class="common" v-if="activeTab === 'common'">
         <ButtonGroup class="row">
-          <Button style="flex: 1;" @click="copyElement()"><IconCopy class="icon" /> 复制</Button>
-          <Button style="flex: 1;" @click="deleteElement()"><IconDelete class="icon" /> 删除</Button>
+          <Button style="flex: 1;" @click="copyElement()"><i-icon-park-outline:copy class="icon" /> 复制</Button>
+          <Button style="flex: 1;" @click="deleteElement()"><i-icon-park-outline:delete class="icon" /> 删除</Button>
         </ButtonGroup>
         
         <Divider :margin="20" />
 
         <ButtonGroup class="row">
-          <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.TOP)"><IconSendToBack class="icon" /> 置顶</Button>
-          <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.BOTTOM)"><IconBringToFrontOne class="icon" /> 置底</Button>
-          <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.UP)"><IconBringToFront class="icon" /> 上移</Button>
-          <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.DOWN)"><IconSentToBack class="icon" /> 下移</Button>
+          <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.TOP)"><i-icon-park-outline:send-to-back class="icon" /> 置顶</Button>
+          <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.BOTTOM)"><i-icon-park-outline:bring-to-front-one class="icon" /> 置底</Button>
+          <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.UP)"><i-icon-park-outline:bring-to-front class="icon" /> 上移</Button>
+          <Button style="flex: 1;" @click="orderElement(handleElement!, ElementOrderCommands.DOWN)"><i-icon-park-outline:sent-to-back class="icon" /> 下移</Button>
         </ButtonGroup>
         
         <Divider :margin="20" />
 
         <ButtonGroup class="row">
-          <Button style="flex: 1;" @click="alignElementToCanvas(ElementAlignCommands.LEFT)"><IconAlignLeft class="icon" /> 左对齐</Button>
-          <Button style="flex: 1;" @click="alignElementToCanvas(ElementAlignCommands.HORIZONTAL)"><IconAlignVertically class="icon" /> 水平居中</Button>
-          <Button style="flex: 1;" @click="alignElementToCanvas(ElementAlignCommands.RIGHT)"><IconAlignRight class="icon" /> 右对齐</Button>
+          <Button style="flex: 1;" @click="alignElementToCanvas(ElementAlignCommands.LEFT)"><i-icon-park-outline:align-left class="icon" /> 左对齐</Button>
+          <Button style="flex: 1;" @click="alignElementToCanvas(ElementAlignCommands.HORIZONTAL)"><i-icon-park-outline:align-vertically class="icon" /> 水平居中</Button>
+          <Button style="flex: 1;" @click="alignElementToCanvas(ElementAlignCommands.RIGHT)"><i-icon-park-outline:align-right class="icon" /> 右对齐</Button>
         </ButtonGroup>
         <ButtonGroup class="row">
-          <Button style="flex: 1;" @click="alignElementToCanvas(ElementAlignCommands.TOP)"><IconAlignTop class="icon" /> 上对齐</Button>
-          <Button style="flex: 1;" @click="alignElementToCanvas(ElementAlignCommands.VERTICAL)"><IconAlignHorizontally class="icon" /> 垂直居中</Button>
-          <Button style="flex: 1;" @click="alignElementToCanvas(ElementAlignCommands.BOTTOM)"><IconAlignBottom class="icon" /> 下对齐</Button>
+          <Button style="flex: 1;" @click="alignElementToCanvas(ElementAlignCommands.TOP)"><i-icon-park-outline:align-top class="icon" /> 上对齐</Button>
+          <Button style="flex: 1;" @click="alignElementToCanvas(ElementAlignCommands.VERTICAL)"><i-icon-park-outline:align-horizontally class="icon" /> 垂直居中</Button>
+          <Button style="flex: 1;" @click="alignElementToCanvas(ElementAlignCommands.BOTTOM)"><i-icon-park-outline:align-bottom class="icon" /> 下对齐</Button>
         </ButtonGroup>
       </div>
     </div>
@@ -120,7 +136,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
 import type { PPTElement, TableCell } from '@/types/slides'
@@ -139,13 +155,15 @@ import Button from '@/components/Button.vue'
 import ButtonGroup from '@/components/ButtonGroup.vue'
 import RadioButton from '@/components/RadioButton.vue'
 import RadioGroup from '@/components/RadioGroup.vue'
+import ColorPicker from '@/components/ColorPicker/index.vue'
+import Popover from '@/components/Popover.vue'
 
 interface TabItem {
   key: 'style' | 'common'
   label: string
 }
 
-const colors = ['#000000', '#ffffff', '#eeece1', '#1e497b', '#4e81bb', '#e2534d', '#9aba60', '#8165a0', '#47acc5', '#f9974c', '#c21401', '#ff1e02', '#ffc12a', '#ffff3a', '#90cf5b', '#00af57']
+const colors = ['#000000', '#ffffff', '#eeece1', '#1e497b', '#4e81bb', '#e2534d', '#9aba60', '#8165a0', '#47acc5', '#c21401', '#ff1e02', '#ffc12a', '#ffff3a', '#90cf5b', '#00af57']
 
 const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
@@ -164,6 +182,41 @@ const tabs: TabItem[] = [
 ]
 const activeTab = ref('common')
 
+const textPropsEnable = computed(() => {
+  if (!handleElement.value) return false
+  if (handleElement.value.type === 'text') return true
+  if (handleElement.value.type === 'shape' && handleElement.value.text?.content) return true
+
+  return false
+})
+
+const textColorPropsEnable = computed(() => {
+  if (!handleElement.value) return false
+  if (
+    handleElement.value.type === 'text' ||
+    handleElement.value.type === 'table' ||
+    handleElement.value.type === 'latex'
+  ) return true
+
+  if (handleElement.value.type === 'shape' && handleElement.value.text?.content) return true
+
+  return false
+})
+
+const fillPropsEnable = computed(() => {
+  if (!handleElement.value) return false
+  if (
+    handleElement.value.type === 'text' ||
+    handleElement.value.type === 'shape' ||
+    handleElement.value.type === 'chart' ||
+    handleElement.value.type === 'table' ||
+    handleElement.value.type === 'line' ||
+    handleElement.value.type === 'audio'
+  ) return true
+
+  return false
+})
+
 const { orderElement } = useOrderElement()
 const { alignElementToCanvas } = useAlignElementToCanvas()
 const { addElementsFromData } = useAddSlidesOrElements()
@@ -177,6 +230,21 @@ const copyElement = () => {
 const emitRichTextCommand = (command: string, value?: string) => {
   emitter.emit(EmitterEvents.RICH_TEXT_COMMAND, { action: { command, value } })
 }
+
+const fontColor = computed(() => {
+  if (!handleElement.value) return '#fff'
+  if (handleElement.value.type === 'text' || (handleElement.value.type === 'shape' && handleElement.value.text?.content)) {
+    return richTextAttrs.value.color
+  }
+  if (handleElement.value.type === 'table') {
+    const data: TableCell[][] = JSON.parse(JSON.stringify(handleElement.value.data))
+    return data[0][0].style?.color
+  }
+  if (handleElement.value.type === 'latex') {
+    return handleElement.value.color
+  }
+  return '#fff'
+})
 
 const updateFontColor = (color: string) => {
   if (!handleElement.value) return
@@ -198,6 +266,26 @@ const updateFontColor = (color: string) => {
   }
 }
 
+const fill = computed(() => {
+  if (!handleElement.value) return '#fff'
+
+  if (
+    handleElement.value.type === 'text' ||
+    handleElement.value.type === 'shape' ||
+    handleElement.value.type === 'chart'
+  ) return handleElement.value.fill
+
+  if (handleElement.value.type === 'table') {
+    const data: TableCell[][] = JSON.parse(JSON.stringify(handleElement.value.data))
+    return data[0][0].style?.backcolor
+  }
+
+  if (handleElement.value.type === 'audio' || handleElement.value.type === 'line') {
+    return handleElement.value.color
+  }
+  return '#fff'
+})
+
 const updateFill = (color: string) => {
   if (!handleElement.value) return
   if (
@@ -217,7 +305,9 @@ const updateFill = (color: string) => {
     updateElement(handleElementId.value, { data })
   }
 
-  if (handleElement.value.type === 'audio') updateElement(handleElementId.value, { color })
+  if (handleElement.value.type === 'audio' || handleElement.value.type === 'line') {
+    updateElement(handleElementId.value, { color })
+  }
 }
 </script>
 
@@ -287,5 +377,18 @@ const updateFill = (color: string) => {
     height: 30px;
     border-radius: 50%;
   }
+
+  &.custom .color-block {
+    background: conic-gradient(from 0deg, #ff1e02, #ffc12a, #90cf5b, #00af57, #47acc5, #4e81bb, #8165a0, #e2534d, #ff1e02);
+  }
+}
+
+.tip {
+  height: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 12px;
+  color: #999;
 }
 </style>

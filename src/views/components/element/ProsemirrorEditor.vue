@@ -8,10 +8,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
 import { debounce } from 'lodash'
 import { storeToRefs } from 'pinia'
-import { useMainStore } from '@/store'
+import { useKeyboardStore, useMainStore } from '@/store'
 import type { EditorView } from 'prosemirror-view'
 import { toggleMark, wrapIn, lift } from 'prosemirror-commands'
 import { initProsemirrorEditor, createDocument } from '@/utils/prosemirror'
@@ -21,7 +21,9 @@ import { alignmentCommand } from '@/utils/prosemirror/commands/setTextAlign'
 import { indentCommand, textIndentCommand } from '@/utils/prosemirror/commands/setTextIndent'
 import { toggleList } from '@/utils/prosemirror/commands/toggleList'
 import { setListStyle } from '@/utils/prosemirror/commands/setListStyle'
+import { replaceText } from '@/utils/prosemirror/commands/replaceText'
 import type { TextFormatPainterKeys } from '@/types/edit'
+import message from '@/utils/message'
 import { KEYS } from '@/configs/hotkey'
 
 const props = withDefaults(defineProps<{
@@ -44,9 +46,10 @@ const emit = defineEmits<{
 }>()
 
 const mainStore = useMainStore()
-const { handleElementId, textFormatPainter, richTextAttrs } = storeToRefs(mainStore)
+const { handleElementId, textFormatPainter, richTextAttrs, activeElementIdList } = storeToRefs(mainStore)
+const { ctrlOrShiftKeyActive } = storeToRefs(useKeyboardStore())
 
-const editorViewRef = ref<HTMLElement>()
+const editorViewRef = useTemplateRef<HTMLElement>('editorViewRef')
 let editorView: EditorView
 
 // 富文本的各种交互事件监听：
@@ -62,7 +65,10 @@ const handleInput = debounce(function(isHanldeHistory = false) {
 }, 300, { trailing: true })
 
 const handleFocus = () => {
-  mainStore.setDisableHotkeysState(true)
+  // 多选且按下了ctrl或shift键时，不禁用全局快捷键
+  if (!ctrlOrShiftKeyActive.value || activeElementIdList.value.length <= 1) {
+    mainStore.setDisableHotkeysState(true)
+  }
   emit('focus')
 }
 
@@ -118,10 +124,14 @@ const execCommand = ({ target, action }: RichTextCommand) => {
   const actions = ('command' in action) ? [action] : action
 
   for (const item of actions) {
-    if (item.command === 'fontname' && item.value) {
+    if (item.command === 'fontname' && item.value !== undefined) {
       const mark = editorView.state.schema.marks.fontname.create({ fontname: item.value })
       autoSelectAll(editorView)
       addMark(editorView, mark)
+
+      if (item.value && !document.fonts.check(`16px ${item.value}`)) {
+        message.warning('字体需要等待加载下载后生效，请稍等')
+      }
     }
     else if (item.command === 'fontsize' && item.value) {
       const mark = editorView.state.schema.marks.fontsize.create({ fontsize: item.value })
@@ -248,6 +258,9 @@ const execCommand = ({ target, action }: RichTextCommand) => {
     }
     else if (item.command === 'insert' && item.value) {
       editorView.dispatch(editorView.state.tr.insertText(item.value))
+    }
+    else if (item.command === 'replace' && item.value) {
+      replaceText(editorView, item.value)
     }
   }
 

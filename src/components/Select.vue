@@ -4,7 +4,7 @@
       <div class="selector">{{ value }}</div>
       <div class="icon">
         <slot name="icon">
-          <IconDown :size="14" />
+          <i-icon-park-outline:down />
         </slot>
       </div>
     </div>
@@ -25,7 +25,7 @@
         <Input ref="searchInputRef" simple :placeholder="searchLabel" v-model:value="searchKey" :style="{ width: width + 2 + 'px' }" />
         <Divider :margin="0" />
       </template>
-      <div class="options" :style="{ width: width + 2 + 'px' }">
+      <div class="options" ref="optionsRef" :style="{ width: width + 2 + 'px' }">
         <div class="option" 
           :class="{
             'disabled': option.disabled,
@@ -41,7 +41,7 @@
       <div class="selector">{{ showLabel }}</div>
       <div class="icon">
         <slot name="icon">
-          <IconDown :size="14" />
+          <i-icon-park-outline:down />
         </slot>
       </div>
     </div>
@@ -49,7 +49,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue'
 import Popover from './Popover.vue'
 import Input from './Input.vue'
 import Divider from './Divider.vue'
@@ -64,10 +64,12 @@ const props = withDefaults(defineProps<{
   value: string | number
   options: SelectOption[]
   disabled?: boolean
+  autofocus?: boolean
   search?: boolean
   searchLabel?: string
 }>(), {
   disabled: false,
+  autofocus: false,
   search: false,
   searchLabel: '搜索',
 })
@@ -77,10 +79,11 @@ const emit = defineEmits<{
 }>()
 
 const popoverVisible = ref(false)
-const selectRef = ref<HTMLElement>()
-const searchInputRef = ref<InstanceType<typeof Input>>()
 const width = ref(0)
 const searchKey = ref('')
+const selectRef = useTemplateRef<HTMLElement>('selectRef')
+const optionsRef = useTemplateRef<HTMLElement>('optionsRef')
+const searchInputRef = useTemplateRef<InstanceType<typeof Input>>('searchInputRef')
 
 const showLabel = computed(() => {
   return props.options.find(item => item.value === props.value)?.label || props.value
@@ -99,6 +102,9 @@ watch(popoverVisible, () => {
   if (popoverVisible.value) {
     nextTick(() => {
       if (searchInputRef.value) searchInputRef.value.focus()
+      if (props.autofocus && optionsRef.value) {
+        optionsRef.value.querySelector('.option.selected')?.scrollIntoView({ block: 'center' })
+      }
     })
   }
   else searchKey.value = ''

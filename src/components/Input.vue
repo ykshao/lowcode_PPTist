@@ -16,11 +16,13 @@
       :disabled="disabled"
       :value="value" 
       :placeholder="placeholder"
+      :maxlength="maxlength"
       @input="$event => handleInput($event)"
       @focus="$event => handleFocus($event)"
       @blur="$event => handleBlur($event)"
       @change="$event => emit('change', $event)"
       @keydown.enter="$event => emit('enter', $event)"
+      @keydown.backspace="$event => emit('backspace', $event)"
     />
     <span class="suffix">
       <slot name="suffix"></slot>
@@ -29,13 +31,14 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { useTemplateRef, ref } from 'vue'
 
 withDefaults(defineProps<{
   value: string
   disabled?: boolean
   placeholder?: string
   simple?: boolean
+  maxlength?: number
 }>(), {
   disabled: false,
   placeholder: '',
@@ -49,6 +52,7 @@ const emit = defineEmits<{
   (event: 'blur', payload: Event): void
   (event: 'focus', payload: Event): void
   (event: 'enter', payload: Event): void
+  (event: 'backspace', payload: Event): void
 }>()
 
 const focused = ref(false)
@@ -65,7 +69,7 @@ const handleFocus = (e: Event) => {
   emit('focus', e)
 }
 
-const inputRef = ref<HTMLInputElement>()
+const inputRef = useTemplateRef<HTMLInputElement>('inputRef')
 const focus = () => {
   if (inputRef.value) inputRef.value.focus()
 }

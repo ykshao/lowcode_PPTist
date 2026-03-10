@@ -8,7 +8,7 @@
 </template>
 
 <script lang="ts" setup>
-import { type CSSProperties, onMounted, onUnmounted, ref, watch, computed } from 'vue'
+import { type CSSProperties, onMounted, onUnmounted, ref, watch, computed, useTemplateRef } from 'vue'
 import tippy, { type Instance, type Placement } from 'tippy.js'
 
 import 'tippy.js/animations/scale.css'
@@ -31,12 +31,14 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   (event: 'update:value', payload: boolean): void
+  (event: 'show'): void
+  (event: 'hide'): void
 }>()
 
 const instance = ref<Instance>()
-const triggerRef = ref<HTMLElement>()
-const contentRef = ref<HTMLElement>()
 const contentVisible = ref(false)
+const triggerRef = useTemplateRef<HTMLElement>('triggerRef')
+const contentRef = useTemplateRef<HTMLElement>('contentRef')
 
 const contentStyle = computed(() => {
   return props.contentStyle || {}
@@ -69,10 +71,16 @@ onMounted(() => {
       contentVisible.value = true
     },
     onShown() {
-      if (!props.value) emit('update:value', true)
+      if (!props.value) {
+        emit('update:value', true)
+        emit('show')
+      }
     },
     onHidden() {
-      if (props.value) emit('update:value', false)
+      if (props.value) {
+        emit('update:value', false)
+        emit('hide')
+      }
       contentVisible.value = false
     },
   })

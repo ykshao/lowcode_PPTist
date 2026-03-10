@@ -3,15 +3,17 @@
     class="thumbnails"
     @mousedown="() => setThumbnailsFocus(true)"
     v-click-outside="() => setThumbnailsFocus(false)"
-    v-contextmenu="contextmenusThumbnails"
   >
     <div class="add-slide">
-      <div class="btn" @click="createSlide()"><IconPlus class="icon" />添加幻灯片</div>
+      <div class="btn" @click="createSlide()"><i-icon-park-outline:plus class="icon" />添加幻灯片</div>
       <Popover trigger="click" placement="bottom-start" v-model:value="presetLayoutPopoverVisible" center>
         <template #content>
-          <LayoutPool @select="slide => { createSlideByTemplate(slide); presetLayoutPopoverVisible = false }" />
+          <Templates 
+            @select="slide => { createSlideByTemplate(slide); presetLayoutPopoverVisible = false }"
+            @selectAll="({ slides, theme }) => { insertAllTemplates({ slides, theme }); presetLayoutPopoverVisible = false }"
+          />
         </template>
-        <div class="select-btn"><IconDown /></div>
+        <div class="select-btn"><i-icon-park-outline:down /></div>
       </Popover>
     </div>
 
@@ -25,6 +27,7 @@
       :disabled="editingSectionId"
       @end="handleDragEnd"
       itemKey="id"
+      v-contextmenu="contextmenusThumbnails"
     >
       <template #item="{ element, index }">
         <div class="thumbnail-container">
@@ -32,6 +35,7 @@
             :data-section-id="element?.sectionTag?.id || ''"
             v-if="element.sectionTag || (hasSection && index === 0)" 
             v-contextmenu="contextmenusSection"
+            @dblclick="() => editSection(element?.sectionTag?.id || '')"
           >
             <input 
               :id="`section-title-input-${element?.sectionTag?.id || 'default'}`" 
@@ -70,9 +74,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore, useKeyboardStore } from '@/store'
+import type { Slide, SlideTheme } from '@/types/slides'
 import { fillDigit } from '@/utils/common'
 import { isElementInViewport } from '@/utils/element'
 import type { ContextmenuItem } from '@/components/Contextmenu/types'
@@ -80,9 +85,10 @@ import useSlideHandler from '@/hooks/useSlideHandler'
 import useSectionHandler from '@/hooks/useSectionHandler'
 import useScreening from '@/hooks/useScreening'
 import useLoadSlides from '@/hooks/useLoadSlides'
+import useAddSlidesOrElements from '@/hooks/useAddSlidesOrElements'
 
 import ThumbnailSlide from '@/views/components/ThumbnailSlide/index.vue'
-import LayoutPool from './LayoutPool.vue'
+import Templates from './Templates.vue'
 import Popover from '@/components/Popover.vue'
 import Draggable from 'vuedraggable'
 
@@ -103,6 +109,8 @@ const hasSection = computed(() => {
   return slides.value.some(item => item.sectionTag)
 })
 
+const { addSlidesFromData } = useAddSlidesOrElements()
+
 const {
   copySlide,
   pasteSlide,
@@ -113,6 +121,7 @@ const {
   cutSlide,
   selectAllSlide,
   sortSlides,
+  isEmptySlide,
 } = useSlideHandler()
 
 const {
@@ -124,7 +133,7 @@ const {
 } = useSectionHandler()
 
 // 页面被切换时
-const thumbnailsRef = ref<InstanceType<typeof Draggable>>()
+const thumbnailsRef = useTemplateRef<InstanceType<typeof Draggable>>('thumbnailsRef')
 watch(() => slideIndex.value, () => {
 
   // 清除多选状态的幻灯片
@@ -141,7 +150,7 @@ watch(() => slideIndex.value, () => {
       }, 100)
     }
   })
-})
+}, { immediate: true })
 
 // 切换页面
 const changeSlideIndex = (index: number) => {
@@ -241,6 +250,11 @@ const saveSection = (e: FocusEvent | KeyboardEvent) => {
 
   editingSectionId.value = ''
   mainStore.setDisableHotkeysState(false)
+}
+
+const insertAllTemplates = ({ slides, theme }: { slides: Slide[], theme: Partial<SlideTheme> }) => {
+  if (isEmptySlide.value) slidesStore.setSlides(slides, theme)
+  else addSlidesFromData(slides)
 }
 
 const contextmenusSection = (el: HTMLElement): ContextmenuItem[] => {
@@ -390,7 +404,7 @@ const contextmenusThumbnailItem = (): ContextmenuItem[] => {
 
   .icon {
     margin-right: 3px;
-    font-size: 14px;
+    font-size: 12px;
   }
 }
 .thumbnail-list {

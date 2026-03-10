@@ -14,11 +14,11 @@
     @close="close()"
   >
     <div class="container">
-      <div class="notes">
+      <div class="notes" ref="notesRef">
         <div class="note" :class="{ 'active': activeNoteId === note.id }" v-for="note in notes" :key="note.id" @click="handleClickNote(note)">
           <div class="header note-header">
             <div class="user">
-              <div class="avatar"><IconUser /></div>
+              <div class="avatar"><i-icon-park-outline:user /></div>
               <div class="user-info">
                 <div class="username">{{ note.user }}</div>
                 <div class="time">{{ new Date(note.time).toLocaleString() }}</div>
@@ -34,7 +34,7 @@
             <div class="reply-item" v-for="reply in note.replies" :key="reply.id">
               <div class="header reply-header">
                 <div class="user">
-                  <div class="avatar"><IconUser /></div>
+                  <div class="avatar"><i-icon-park-outline:user /></div>
                   <div class="user-info">
                     <div class="username">{{ reply.user }}</div>
                     <div class="time">{{ new Date(reply.time).toLocaleString() }}</div>
@@ -48,7 +48,7 @@
             </div>
           </div>
           <div class="note-reply" v-if="replyNoteId === note.id">
-            <TextArea :padding="6" v-model:value="replyContent" placeholder="输入回复内容" :rows="1" />
+            <TextArea :padding="6" v-model:value="replyContent" placeholder="输入回复内容" :rows="1" @enter.prevent="createNoteReply()" />
             <div class="reply-btns">
               <Button class="btn" size="small" @click="replyNoteId = ''">取消</Button>
               <Button class="btn" size="small" type="primary" @click="createNoteReply()">回复</Button>
@@ -65,10 +65,11 @@
           :placeholder="`输入批注（为${handleElementId ? '选中元素' : '当前页幻灯片' }）`"
           :rows="2"
           @focus="replyNoteId = ''; activeNoteId = ''"
+          @enter.prevent="createNote()"
         />
         <div class="footer">
-          <IconDelete class="btn icon" v-tooltip="'清空本页批注'" style="flex: 1" @click="clear()" />
-          <Button type="primary" class="btn" style="flex: 12" @click="createNote()">添加批注</Button>
+          <i-icon-park-outline:delete class="btn icon" v-tooltip="'清空本页批注'" style="flex: 1" @click="clear()" />
+          <Button type="primary" class="btn" style="flex: 12" @click="createNote()"><i-icon-park-outline:plus /> 添加批注</Button>
         </div>
       </div>
     </div>
@@ -76,7 +77,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { useMainStore, useSlidesStore } from '@/store'
@@ -96,12 +97,19 @@ const replyContent = ref('')
 const notes = computed(() => currentSlide.value?.notes || [])
 const activeNoteId = ref('')
 const replyNoteId = ref('')
-const textAreaRef = ref<InstanceType<typeof TextArea>>()
+const textAreaRef = useTemplateRef<InstanceType<typeof TextArea>>('textAreaRef')
+const notesRef = useTemplateRef<HTMLElement>('notesRef')
 
 watch(slideIndex, () => {
   activeNoteId.value = ''
   replyNoteId.value = ''
 })
+
+const scrollToBottom = () => {
+  if (notesRef.value) {
+    notesRef.value.scrollTop = notesRef.value.scrollHeight
+  }
+}
 
 const createNote = () => {
   if (!content.value) {
@@ -124,6 +132,8 @@ const createNote = () => {
   slidesStore.updateSlide({ notes: newNotes })
 
   content.value = ''
+
+  nextTick(scrollToBottom)
 }
 
 const deleteNote = (id: string) => {
@@ -155,6 +165,8 @@ const createNoteReply = () => {
 
   replyContent.value = ''
   replyNoteId.value = ''
+
+  nextTick(scrollToBottom)
 }
 
 const deleteReply = (noteId: string, replyId: string) => {
@@ -318,12 +330,9 @@ const close = () => {
   .footer {
     margin-top: 10px;
     display: flex;
+    align-items: center;
 
     .btn {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      
       &.icon {
         font-size: 18px;
         color: #666;

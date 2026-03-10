@@ -20,7 +20,7 @@
 
     <div class="picker-field">
       <EditableInput class="input" :value="color" @colorChange="value => changeColor(value)" />
-      <div class="straw" @click="openEyeDropper()"><IconNeedle /></div>
+      <div class="straw" @click="openEyeDropper()"><i-icon-park-outline:needle /></div>
       <div class="transparent" @click="selectPresetColor('#00000000')">
         <Checkboard />
       </div>
@@ -29,6 +29,7 @@
     <div class="picker-presets">
       <div
         class="picker-presets-color"
+        :class="{ 'white': c === '#ffffff' || c === '#fff' || c === 'rgb(255, 255, 255)' }"
         v-for="c in themeColors"
         :key="c"
         :style="{ background: c }"
@@ -53,9 +54,9 @@
 
     <div class="picker-presets">
       <div
+        class="picker-presets-color"
         v-for="c in standardColors"
         :key="c"
-        class="picker-presets-color"
         :style="{ background: c }"
         @click="selectPresetColor(c)"
       ></div>
@@ -64,9 +65,10 @@
     <div class="recent-colors-title" v-if="recentColors.length">最近使用：</div>
     <div class="picker-presets">
       <div
+        class="picker-presets-color alpha"
+        :class="{ 'white': c === '#ffffff' || c === '#fff' || c === 'rgb(255, 255, 255)' }"
         v-for="c in recentColors"
         :key="c"
-        class="picker-presets-color alpha"
         @click="selectPresetColor(c)"
       >
         <div class="picker-presets-color-content" :style="{ background: c }"></div>
@@ -91,7 +93,7 @@ import EditableInput from './EditableInput.vue'
 const props = withDefaults(defineProps<{
   modelValue?: string
 }>(), {
-  modelValue: '#e86b99',
+  modelValue: '#ffffff',
 })
 
 const emit = defineEmits<{
@@ -358,11 +360,11 @@ const customEyeDropper = () => {
 .picker-field {
   display: flex;
   margin-bottom: 8px;
+  margin-top: 4px;
 
   .transparent {
     width: 24px;
     height: 24px;
-    margin-top: 4px;
     margin-left: 8px;
     position: relative;
     cursor: pointer;
@@ -386,7 +388,6 @@ const customEyeDropper = () => {
   .straw {
     width: 24px;
     height: 24px;
-    margin-top: 4px;
     margin-left: 8px;
     display: flex;
     justify-content: center;
@@ -415,6 +416,12 @@ const customEyeDropper = () => {
 
   &.alpha {
     background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAADBJREFUOE9jfPbs2X8GPEBSUhKfNAPjqAHDIgz+//+PNx08f/4cfzoYNYCBceiHAQC5flV5JzgrxQAAAABJRU5ErkJggg==);
+  }
+
+  &.white::after {
+    content: '';
+    @include absolute-0();
+    border: 1px solid #f5f5f5;
   }
 }
 .picker-presets-color-content {

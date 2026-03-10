@@ -1,10 +1,6 @@
 import { defineStore } from 'pinia'
-import tinycolor from 'tinycolor2'
 import { omit } from 'lodash'
-import type { Slide, SlideTheme, PPTElement, PPTAnimation } from '@/types/slides'
-import { slides } from '@/mocks/slides'
-import { theme } from '@/mocks/theme'
-import { layouts } from '@/mocks/layout'
+import type { Slide, SlideTheme, PPTElement, PPTAnimation, SlideTemplate } from '@/types/slides'
 
 interface RemovePropData {
   id: string
@@ -29,16 +25,43 @@ export interface SlidesState {
   slideIndex: number
   viewportSize: number
   viewportRatio: number
+  templates: SlideTemplate[]
 }
 
 export const useSlidesStore = defineStore('slides', {
   state: (): SlidesState => ({
     title: '未命名演示文稿', // 幻灯片标题
-    theme: theme, // 主题样式
-    slides: slides, // 幻灯片页面数据
+    theme: {
+      themeColors: ['#5b9bd5', '#ed7d31', '#a5a5a5', '#ffc000', '#4472c4', '#70ad47'],
+      fontColor: '#333',
+      fontName: '',
+      backgroundColor: '#fff',
+      shadow: {
+        h: 3,
+        v: 3,
+        blur: 2,
+        color: '#808080',
+      },
+      outline: {
+        width: 2,
+        color: '#525252',
+        style: 'solid',
+      },
+    }, // 主题样式
+    slides: [], // 幻灯片页面数据
     slideIndex: 0, // 当前页面索引
     viewportSize: 1000, // 可视区域宽度基数
     viewportRatio: 0.5625, // 可视区域比例，默认16:9
+    templates: [
+      { name: '山河映红', id: 'template_1', cover: './imgs/template_1.webp', origin: '官方制作' },
+      { name: '都市蓝调', id: 'template_2', cover: './imgs/template_2.webp', origin: '官方制作' },
+      { name: '智感几何', id: 'template_3', cover: './imgs/template_3.webp', origin: '官方制作' },
+      { name: '柔光莫兰迪', id: 'template_4', cover: './imgs/template_4.webp', origin: '官方制作' },
+      { name: '简约绿意', id: 'template_5', cover: './imgs/template_5.webp', origin: '社区贡献+官方深度完善优化' },
+      { name: '暖色复古', id: 'template_6', cover: './imgs/template_6.webp', origin: '社区贡献+官方深度完善优化' },
+      { name: '深邃沉稳', id: 'template_7', cover: './imgs/template_7.webp', origin: '社区贡献+官方深度完善优化' },
+      { name: '浅蓝小清新', id: 'template_8', cover: './imgs/template_8.webp', origin: '社区贡献+官方深度完善优化' },
+    ], // 模板
   }),
 
   getters: {
@@ -86,26 +109,6 @@ export const useSlidesStore = defineStore('slides', {
       }
       return formatedAnimations
     },
-  
-    layouts(state) {
-      const {
-        themeColor,
-        fontColor,
-        fontName,
-        backgroundColor,
-      } = state.theme
-  
-      const subColor = tinycolor(fontColor).isDark() ? 'rgba(230, 230, 230, 0.5)' : 'rgba(180, 180, 180, 0.5)'
-  
-      const layoutsString = JSON.stringify(layouts)
-        .replace(/{{themeColor}}/g, themeColor)
-        .replace(/{{fontColor}}/g, fontColor)
-        .replace(/{{fontName}}/g, fontName)
-        .replace(/{{backgroundColor}}/g, backgroundColor)
-        .replace(/{{subColor}}/g, subColor)
-      
-      return JSON.parse(layoutsString)
-    },
   },
 
   actions: {
@@ -126,8 +129,13 @@ export const useSlidesStore = defineStore('slides', {
       this.viewportRatio = viewportRatio
     },
   
-    setSlides(slides: Slide[]) {
+    setSlides(slides: Slide[], themeProps?: Partial<SlideTheme>) {
       this.slides = slides
+      if (themeProps) this.setTheme(themeProps)
+    },
+  
+    setTemplates(templates: SlideTemplate[]) {
+      this.templates = templates
     },
   
     addSlide(slide: Slide | Slide[]) {

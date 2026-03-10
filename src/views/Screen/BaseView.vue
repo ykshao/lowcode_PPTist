@@ -6,9 +6,9 @@
       :animationIndex="animationIndex"
       :turnSlideToId="turnSlideToId"
       :manualExitFullscreen="manualExitFullscreen"
-      @wheel="$event => mousewheelListener($event)"
-      @touchstart="$event => touchStartListener($event)"
-      @touchend="$event => touchEndListener($event)"
+      @wheel="($event: WheelEvent) => mousewheelListener($event)"
+      @touchstart="($event: TouchEvent) => touchStartListener($event)"
+      @touchend="($event: TouchEvent) => touchEndListener($event)"
       v-contextmenu="contextmenus"
     />
 
@@ -31,8 +31,8 @@
     />
 
     <div class="tools-left">
-      <IconLeftTwo class="tool-btn" theme="two-tone" :fill="['#111', '#fff']" @click="execPrev()" />
-      <IconRightTwo class="tool-btn" theme="two-tone" :fill="['#111', '#fff']" @click="execNext()" />
+      <i-custom:left class="tool-btn" @click="execPrev()" />
+      <i-custom:right class="tool-btn" @click="execNext()" />
     </div>
 
     <div 
@@ -42,15 +42,17 @@
     >
       <div class="content">
         <div class="tool-btn page-number" @click="slideThumbnailModelVisible = true">幻灯片 {{slideIndex + 1}} / {{slides.length}}</div>
-        <IconWrite class="tool-btn" v-tooltip="'画笔工具'" @click="writingBoardToolVisible = true" />
-        <IconMagic class="tool-btn" v-tooltip="'激光笔'" :class="{ 'active': laserPen }" @click="laserPen = !laserPen" />
-        <IconStopwatchStart class="tool-btn" v-tooltip="'计时器'" :class="{ 'active': timerlVisible }" @click="timerlVisible = !timerlVisible" />
-        <IconListView class="tool-btn" v-tooltip="'演讲者视图'" @click="changeViewMode('presenter')" />
-        <IconOffScreenOne class="tool-btn" v-tooltip="'退出全屏'" v-if="fullscreenState" @click="manualExitFullscreen()" />
-        <IconFullScreenOne class="tool-btn" v-tooltip="'进入全屏'" v-else @click="enterFullscreen()" />
-        <IconPower class="tool-btn" v-tooltip="'结束放映'" @click="exitScreening()" />
+        <i-icon-park-outline:write class="tool-btn" v-tooltip="'画笔工具'" @click="writingBoardToolVisible = true" />
+        <i-icon-park-outline:magic class="tool-btn" v-tooltip="'激光笔'" :class="{ 'active': laserPen }" @click="laserPen = !laserPen" />
+        <i-icon-park-outline:stopwatch-start class="tool-btn" v-tooltip="'计时器'" :class="{ 'active': timerlVisible }" @click="timerlVisible = !timerlVisible" />
+        <i-icon-park-outline:list-view class="tool-btn" v-tooltip="'演讲者视图'" @click="changeViewMode('presenter')" />
+        <i-icon-park-outline:off-screen-one class="tool-btn" v-tooltip="'退出全屏'" v-if="fullscreenState" @click="manualExitFullscreen()" />
+        <i-icon-park-outline:full-screen-one class="tool-btn" v-tooltip="'进入全屏'" v-else @click="enterFullscreen()" />
+        <i-icon-park-outline:power class="tool-btn" v-tooltip="'结束放映'" @click="exitScreening()" />
       </div>
     </div>
+
+    <BottomThumbnails v-if="bottomThumbnailsVisible" />
   </div>
 </template>
 
@@ -69,6 +71,7 @@ import ScreenSlideList from './ScreenSlideList.vue'
 import SlideThumbnails from './SlideThumbnails.vue'
 import WritingBoardTool from './WritingBoardTool.vue'
 import CountdownTimer from './CountdownTimer.vue'
+import BottomThumbnails from './BottomThumbnails.vue'
 
 const props = defineProps<{
   changeViewMode: (mode: 'base' | 'presenter') => void
@@ -104,6 +107,7 @@ const rightToolsVisible = ref(false)
 const writingBoardToolVisible = ref(false)
 const timerlVisible = ref(false)
 const slideThumbnailModelVisible = ref(false)
+const bottomThumbnailsVisible = ref(false)
 const laserPen = ref(false)
 
 const contextmenus = (): ContextmenuItem[] => {
@@ -172,6 +176,11 @@ const contextmenus = (): ContextmenuItem[] => {
       handler: () => slideThumbnailModelVisible.value = true,
     },
     {
+      text: '触底显示缩略图',
+      subText: bottomThumbnailsVisible.value ? '√' : '',
+      handler: () => bottomThumbnailsVisible.value = !bottomThumbnailsVisible.value,
+    },
+    {
       text: '画笔工具',
       handler: () => writingBoardToolVisible.value = true,
     },
@@ -207,11 +216,12 @@ const contextmenus = (): ContextmenuItem[] => {
   z-index: 10;
 
   .tool-btn {
-    opacity: .35;
+    opacity: .1;
     cursor: pointer;
+    transition: opacity $transitionDelay;
 
     &:hover {
-      opacity: .9;
+      opacity: 1;
     }
     & + .tool-btn {
       margin-left: 8px;
@@ -267,8 +277,8 @@ const contextmenus = (): ContextmenuItem[] => {
     }
   }
   .page-number {
-    font-size: 13px;
-    padding: 8px 12px;
+    font-size: 12px;
+    padding: 0 12px;
     cursor: pointer;
   }
 }

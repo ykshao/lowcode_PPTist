@@ -1,6 +1,5 @@
-import { computed, ref } from 'vue'
+import { createVNode, render, computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { trim } from 'lodash'
 import { saveAs } from 'file-saver'
 import pptxgen from 'pptxgenjs'
 import tinycolor from 'tinycolor2'
@@ -14,6 +13,9 @@ import { encrypt } from '@/utils/crypto'
 import { svg2Base64 } from '@/utils/svg2Base64'
 import message from '@/utils/message'
 
+import BaseLatexElement from '@/views/components/element/LatexElement/BaseLatexElement.vue'
+import BaseShapeElement from '@/views/components/element/ShapeElement/BaseShapeElement.vue'
+
 interface ExportImageConfig {
   quality: number
   width: number
@@ -23,6 +25,8 @@ interface ExportImageConfig {
 export default () => {
   const slidesStore = useSlidesStore()
   const { slides, theme, viewportRatio, title, viewportSize } = storeToRefs(slidesStore)
+
+  const defaultFontSize = 16
 
   const ratioPx2Inch = computed(() => {
     return 96 * (viewportSize.value / 960)
@@ -58,21 +62,82 @@ export default () => {
       })
     }, 200)
   }
+
+  // 导出图片版PPTX
+  const exportImagePPTX = (domRefs: NodeListOf<Element>) => {
+    exporting.value = true
+    
+    setTimeout(() => {
+      const pptx = new pptxgen()
+
+      const config: ExportImageConfig = {
+        quality: 1,
+        width: 1600,
+      }
+
+      const promiseArr = []
+      for (const domRef of domRefs) {
+        const foreignObjectSpans = domRef.querySelectorAll('foreignObject [xmlns]')
+        foreignObjectSpans.forEach(spanRef => spanRef.removeAttribute('xmlns'))
+
+        const promiseFunc = () => toJpeg((domRef as HTMLElement), config)
+        promiseArr.push(promiseFunc)
+      }
+
+      Promise.all(promiseArr.map(func => func())).then(imgs => {
+        for (const data of imgs) {
+          const pptxSlide = pptx.addSlide()
+          pptxSlide.addImage({
+            data,
+            x: 0,
+            y: 0,
+            w: viewportSize.value / ratioPx2Inch.value,
+            h: viewportSize.value * viewportRatio.value / ratioPx2Inch.value,
+          })
+        }
+        pptx.writeFile({ fileName: `${title.value}.pptx` }).then(() => exporting.value = false)
+      }).catch(() => {
+        exporting.value = false
+        message.error('导出失败')
+      })
+    }, 200)
+  }
   
   // 导出pptist文件（特有 .pptist 后缀文件）
   const exportSpecificFile = (_slides: Slide[]) => {
-    const blob = new Blob([encrypt(JSON.stringify(_slides))], { type: '' })
+    const json = {
+      title: title.value,
+      width: viewportSize.value,
+      height: viewportSize.value * viewportRatio.value,
+      theme: theme.value,
+      slides: _slides,
+    }
+    const blob = new Blob([encrypt(JSON.stringify(json))], { type: '' })
     saveAs(blob, `${title.value}.pptist`)
   }
   
   // 导出JSON文件
   const exportJSON = () => {
-    const blob = new Blob([JSON.stringify(slides.value)], { type: '' })
+    const json = {
+      title: title.value,
+      width: viewportSize.value,
+      height: viewportSize.value * viewportRatio.value,
+      theme: theme.value,
+      slides: slides.value,
+    }
+    const blob = new Blob([JSON.stringify(json)], { type: '' })
     saveAs(blob, `${title.value}.json`)
   }
 
   // 格式化颜色值为 透明度 + HexString，供pptxgenjs使用
   const formatColor = (_color: string) => {
+    if (!_color) {
+      return {
+        alpha: 0,
+        color: '#000000',
+      }
+    }
+
     const c = tinycolor(_color)
     const alpha = c.getAlpha()
     const color = alpha === 0 ? '#ffffff' : c.setAlpha(1).toHexString()
@@ -92,7 +157,7 @@ export default () => {
     let indent = 0
 
     const slices: pptxgen.TextProps[] = []
-    const parse = (obj: AST[], baseStyleObj: { [key: string]: string } = {}) => {
+    const parse = (obj: AST[], baseStyleObj: Record<string, string> = {}) => {
 
       for (const item of obj) {
         const isBlockTag = 'tagName' in item && ['div', 'li', 'p'].includes(item.tagName)
@@ -108,9 +173,11 @@ export default () => {
         if (styleAttr && styleAttr.value) {
           const styleArr = styleAttr.value.split(';')
           for (const styleItem of styleArr) {
-            const [_key, _value] = styleItem.split(': ')
-            const [key, value] = [trim(_key), trim(_value)]
-            if (key && value) styleObj[key] = value
+            const match = styleItem.match(/([^:]+):\s*(.+)/)
+            if (match) {
+              const [key, value] = [match[1].trim(), match[2].trim()]
+              if (key && value) styleObj[key] = value
+            }
           }
         }
 
@@ -197,12 +264,12 @@ export default () => {
           if (styleObj['href']) options.hyperlink = { url: styleObj['href'] }
 
           if (bulletFlag && styleObj['list-type'] === 'ol') {
-            options.bullet = { type: 'number', indent: (options.fontSize || 20) * 1.25 }
+            options.bullet = { type: 'number', indent: (options.fontSize || defaultFontSize) * 1.25 }
             options.paraSpaceBefore = 0.1
             bulletFlag = false
           }
           if (bulletFlag && styleObj['list-type'] === 'ul') {
-            options.bullet = { indent: (options.fontSize || 20) * 1.25 }
+            options.bullet = { indent: (options.fontSize || defaultFontSize) * 1.25 }
             options.paraSpaceBefore = 0.1
             bulletFlag = false
           }
@@ -369,6 +436,13 @@ export default () => {
     return url.match(regex) !== null
   }
 
+  // 判断是否为SVG图片地址
+  const isSVGImage = (url: string) => {
+    const isSVGBase64 = /^data:image\/svg\+xml;base64,/.test(url)
+    const isSVGUrl = /\.svg$/.test(url)
+    return isSVGBase64 || isSVGUrl
+  }
+
   // 导出PPTX文件
   const exportPPTX = (_slides: Slide[], masterOverwrite: boolean, ignoreMedia: boolean) => {
     exporting.value = true
@@ -400,8 +474,21 @@ export default () => {
       if (slide.background) {
         const background = slide.background
         if (background.type === 'image' && background.image) {
-          if (isBase64Image(background.image.src)) pptxSlide.background = { data: background.image.src }
-          else pptxSlide.background = { path: background.image.src }
+          if (isSVGImage(background.image.src)) {
+            pptxSlide.addImage({
+              data: background.image.src,
+              x: 0,
+              y: 0,
+              w: viewportSize.value / ratioPx2Inch.value,
+              h: viewportSize.value * viewportRatio.value / ratioPx2Inch.value,
+            })
+          }
+          else if (isBase64Image(background.image.src)) {
+            pptxSlide.background = { data: background.image.src }
+          }
+          else {
+            pptxSlide.background = { path: background.image.src }
+          }
         }
         else if (background.type === 'solid' && background.color) {
           const c = formatColor(background.color)
@@ -416,7 +503,16 @@ export default () => {
           pptxSlide.background = { color: c.color, transparency: (1 - c.alpha) * 100 }
         }
       }
-      if (slide.remark) pptxSlide.addNotes(slide.remark)
+      if (slide.remark) {
+        const doc = new DOMParser().parseFromString(slide.remark, 'text/html')
+        const pList = doc.body.querySelectorAll('p')
+        const text = []
+        for (const p of pList) {
+          const textContent = p.textContent
+          text.push(textContent || '')
+        }
+        pptxSlide.addNotes(text.join('\n'))
+      }
 
       if (!slide.elements) continue
 
@@ -429,7 +525,7 @@ export default () => {
             y: el.top / ratioPx2Inch.value,
             w: el.width / ratioPx2Inch.value,
             h: el.height / ratioPx2Inch.value,
-            fontSize: 20 / ratioPx2Pt.value,
+            fontSize: defaultFontSize / ratioPx2Pt.value,
             fontFace: '微软雅黑',
             color: '#000000',
             valign: 'top',
@@ -502,9 +598,14 @@ export default () => {
 
         else if (el.type === 'shape') {
           if (el.special) {
-            const svgRef = document.querySelector(`.thumbnail-list .base-element-${el.id} svg`) as HTMLElement
-            if (svgRef.clientWidth < 1 || svgRef.clientHeight < 1) continue // 临时处理（导入PPTX文件带来的异常数据）
-            const base64SVG = svg2Base64(svgRef)
+            const container = document.createElement('div')
+            const vm = createVNode(BaseShapeElement, { elementInfo: el }, null)
+            render(vm, container)
+            const svgRef = container.querySelector('svg')
+            const base64SVG = svgRef ? svg2Base64(svgRef) : ''
+            render(null, container)
+
+            if (!base64SVG) continue
 
             const options: pptxgen.ImageProps = {
               data: base64SVG,
@@ -514,6 +615,8 @@ export default () => {
               h: el.height / ratioPx2Inch.value,
             }
             if (el.rotate) options.rotate = el.rotate
+            if (el.flipH) options.flipH = el.flipH
+            if (el.flipV) options.flipV = el.flipV
             if (el.link) {
               const linkOption = getLinkOption(el.link)
               if (linkOption) options.hyperlink = linkOption
@@ -536,6 +639,7 @@ export default () => {
               const color = tinycolor.mix(color1, color2).toHexString()
               fillColor = formatColor(color)
             }
+            if (el.pattern) fillColor = formatColor('#00000000')
             const opacity = el.opacity === undefined ? 1 : el.opacity
   
             const options: pptxgen.ShapeProps = {
@@ -566,7 +670,7 @@ export default () => {
               y: el.top / ratioPx2Inch.value,
               w: el.width / ratioPx2Inch.value,
               h: el.height / ratioPx2Inch.value,
-              fontSize: 20 / ratioPx2Pt.value,
+              fontSize: defaultFontSize / ratioPx2Pt.value,
               fontFace: '微软雅黑',
               color: '#000000',
               paraSpaceBefore: 5 / ratioPx2Pt.value,
@@ -577,6 +681,26 @@ export default () => {
             if (el.text.defaultFontName) options.fontFace = el.text.defaultFontName
 
             pptxSlide.addText(textProps, options)
+          }
+          if (el.pattern) {
+            const options: pptxgen.ImageProps = {
+              x: el.left / ratioPx2Inch.value,
+              y: el.top / ratioPx2Inch.value,
+              w: el.width / ratioPx2Inch.value,
+              h: el.height / ratioPx2Inch.value,
+            }
+            if (isBase64Image(el.pattern)) options.data = el.pattern
+            else options.path = el.pattern
+  
+            if (el.flipH) options.flipH = el.flipH
+            if (el.flipV) options.flipV = el.flipV
+            if (el.rotate) options.rotate = el.rotate
+            if (el.link) {
+              const linkOption = getLinkOption(el.link)
+              if (linkOption) options.hyperlink = linkOption
+            }
+
+            pptxSlide.addImage(options)
           }
         }
 
@@ -789,8 +913,14 @@ export default () => {
         }
         
         else if (el.type === 'latex') {
-          const svgRef = document.querySelector(`.thumbnail-list .base-element-${el.id} svg`) as HTMLElement
-          const base64SVG = svg2Base64(svgRef)
+          const container = document.createElement('div')
+          const vm = createVNode(BaseLatexElement, { elementInfo: el }, null)
+          render(vm, container)
+          const svgRef = container.querySelector('svg')
+          const base64SVG = svgRef ? svg2Base64(svgRef) : ''
+          render(null, container)
+
+          if (!base64SVG) continue
 
           const options: pptxgen.ImageProps = {
             data: base64SVG,
@@ -842,6 +972,7 @@ export default () => {
   return {
     exporting,
     exportImage,
+    exportImagePPTX,
     exportJSON,
     exportSpecificFile,
     exportPPTX,

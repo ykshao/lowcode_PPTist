@@ -2,7 +2,7 @@ import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { useMainStore, useSlidesStore } from '@/store'
 import { getImageSize } from '@/utils/image'
-import type { PPTLineElement, PPTElement, TableCell, TableCellStyle, PPTShapeElement, ChartType } from '@/types/slides'
+import type { PPTLineElement, PPTElement, TableCell, TableCellStyle, PPTShapeElement, ChartType, PPTVideoElement, PPTAudioElement } from '@/types/slides'
 import { type ShapePoolItem, SHAPE_PATH_FORMULAS } from '@/configs/shapes'
 import type { LinePoolItem } from '@/configs/lines'
 import { CHART_DEFAULT_DATA } from '@/configs/chart'
@@ -96,7 +96,7 @@ export default () => {
       width: 400,
       height: 400,
       rotate: 0,
-      themeColors: [theme.value.themeColor],
+      themeColors: theme.value.themeColors,
       textColor: theme.value.fontColor,
       data: CHART_DEFAULT_DATA[type],
     })
@@ -145,7 +145,7 @@ export default () => {
         color: '#eeece1',
       },
       theme: {
-        color: theme.value.themeColor,
+        color: theme.value.themeColors[0],
         rowHeader: true,
         rowFooter: false,
         colHeader: false,
@@ -202,7 +202,7 @@ export default () => {
       height,
       viewBox: data.viewBox,
       path: data.path,
-      fill: theme.value.themeColor,
+      fill: theme.value.themeColors[0],
       fixedRatio: false,
       rotate: 0,
       ...supplement,
@@ -239,7 +239,7 @@ export default () => {
       start,
       end,
       points: data.points,
-      color: theme.value.themeColor,
+      color: theme.value.themeColors[0],
       style: data.style,
       width: 2,
     }
@@ -276,8 +276,8 @@ export default () => {
    * 创建视频元素
    * @param src 视频地址
    */
-  const createVideoElement = (src: string) => {
-    createElement({
+  const createVideoElement = (src: string, ext?: string) => {
+    const newElement: PPTVideoElement = {
       type: 'video',
       id: nanoid(10),
       width: 500,
@@ -287,15 +287,17 @@ export default () => {
       top: (viewportSize.value * viewportRatio.value - 300) / 2,
       src,
       autoplay: false,
-    })
+    }
+    if (ext) newElement.ext = ext
+    createElement(newElement)
   }
   
   /**
    * 创建音频元素
    * @param src 音频地址
    */
-  const createAudioElement = (src: string) => {
-    createElement({
+  const createAudioElement = (src: string, ext?: string) => {
+    const newElement: PPTAudioElement = {
       type: 'audio',
       id: nanoid(10),
       width: 50,
@@ -306,9 +308,11 @@ export default () => {
       loop: false,
       autoplay: false,
       fixedRatio: true,
-      color: theme.value.themeColor,
+      color: theme.value.themeColors[0],
       src,
-    })
+    }
+    if (ext) newElement.ext = ext
+    createElement(newElement)
   }
 
   return {

@@ -50,19 +50,19 @@
         </div>
       </div>
       <div class="tip">
-        提示：若打印预览与实际样式不一致，请在弹出的打印窗口中勾选【背景图形】选项。
+        建议：请在弹出的打印窗口中勾选「背景图形」选项，边距选择「默认」。
       </div>
     </div>
 
     <div class="btns">
-      <Button class="btn export" type="primary" @click="expPDF()">打印 / 导出 PDF</Button>
+      <Button class="btn export" type="primary" @click="expPDF()"><i-icon-park-outline:download /> 打印 / 导出 PDF</Button>
       <Button class="btn close" @click="emit('close')">关闭</Button>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { ref, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
 import { print } from '@/utils/print'
@@ -80,7 +80,7 @@ const emit = defineEmits<{
 
 const { slides, currentSlide, viewportRatio } = storeToRefs(useSlidesStore())
 
-const pdfThumbnailsRef = ref<HTMLElement>()
+const pdfThumbnailsRef = useTemplateRef<HTMLElement>('pdfThumbnailsRef')
 const rangeType = ref<'all' | 'current'>('all')
 const count = ref(1)
 const padding = ref(true)
@@ -122,7 +122,7 @@ const expPDF = () => {
 }
 .configs {
   width: 300px;
-  height: calc(100% - 100px);
+  height: calc(100% - 80px);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -151,7 +151,7 @@ const expPDF = () => {
 }
 .btns {
   width: 300px;
-  height: 100px;
+  height: 80px;
   display: flex;
   justify-content: center;
   align-items: center;

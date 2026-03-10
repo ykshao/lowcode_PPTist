@@ -6,7 +6,7 @@
     :left="-270" 
     :top="90"
   >
-    <div class="close-btn" @click="close()" @mousedown.stop><IconClose /></div>
+    <div class="close-btn" @click="close()" @mousedown.stop><i-icon-park-outline:close /></div>
     <Tabs 
       :tabs="tabs" 
       v-model:value="type" 
@@ -23,8 +23,8 @@
             @click="toggleModifiers()"
           >Aa</span>
           <Divider type="vertical" />
-          <IconLeft class="next-btn left" @click="searchPrev()" v-tooltip="'上一个'" />
-          <IconRight class="next-btn right" @click="searchNext()" v-tooltip="'下一个'" />
+          <span class="next-btn left" @click="searchPrev()" v-tooltip="'上一个'"><i-icon-park-outline:left /></span>
+          <span class="next-btn right" @click="searchNext()" v-tooltip="'下一个'"><i-icon-park-outline:right /></span>
         </template>
       </Input>
       <Input class="input" v-model:value="replaceWord" placeholder="输入替换内容" @enter="replace()" v-if="type === 'replace'"></Input>
@@ -37,7 +37,7 @@
 </template>
 
 <script lang="ts" setup>
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, ref, watch, useTemplateRef } from 'vue'
 import { useMainStore } from '@/store'
 import useSearch from '@/hooks/useSearch'
 import MoveablePanel from '@/components/MoveablePanel.vue'
@@ -77,7 +77,7 @@ const close = () => {
   mainStore.setSearchPanelState(false)
 }
 
-const searchInpRef = ref<InstanceType<typeof Input>>()
+const searchInpRef = useTemplateRef<InstanceType<typeof Input>>('searchInpRef')
 onMounted(() => {
   searchInpRef.value!.focus()
 })
@@ -147,5 +147,9 @@ watch(type, () => {
   color: #666;
   font-size: 13px;
   cursor: pointer;
+
+  &:hover {
+    color: $themeColor;
+  }
 }
 </style>

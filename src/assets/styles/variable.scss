@@ -1,5 +1,5 @@
 $themeColor: #d14424;
-$themeHoverColor: #de6949;
+$themeHoverColor: lighten($themeColor, 8%);
 $textColor: #41464b;
 $borderColor: #e5e7eb;
 $lightGray: #f9f9f9;
@@ -11,3 +11,5 @@ $transitionDelayFast: .1s;
 $transitionDelaySlow: .3s;
 
 $borderRadius: 2px;
+
+$textElementFont: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';

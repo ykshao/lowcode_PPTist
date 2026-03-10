@@ -97,7 +97,7 @@
 </template>
 
 <script lang="ts" setup>
-import { nextTick, onMounted, onUnmounted, provide, ref, watch, watchEffect } from 'vue'
+import { nextTick, onMounted, onUnmounted, provide, ref, watch, watchEffect, useTemplateRef } from 'vue'
 import { throttle } from 'lodash'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore, useKeyboardStore } from '@/store'
@@ -110,7 +110,7 @@ import { KEYS } from '@/configs/hotkey'
 
 import useViewportSize from './hooks/useViewportSize'
 import useMouseSelection from './hooks/useMouseSelection'
-import useDropImageOrText from './hooks/useDropImageOrText'
+import useDrop from './hooks/useDrop'
 import useRotateElement from './hooks/useRotateElement'
 import useScaleElement from './hooks/useScaleElement'
 import useSelectAndMoveElement from './hooks/useSelectElement'
@@ -156,7 +156,7 @@ const {
 const { currentSlide } = storeToRefs(useSlidesStore())
 const { ctrlKeyState, spaceKeyState } = storeToRefs(useKeyboardStore())
 
-const viewportRef = ref<HTMLElement>()
+const viewportRef = useTemplateRef<HTMLElement>('viewportRef')
 const alignmentLines = ref<AlignmentLineProps[]>([])
 
 const linkDialogVisible = ref(false)
@@ -172,10 +172,10 @@ const setLocalElementList = () => {
 }
 watchEffect(setLocalElementList)
 
-const canvasRef = ref<HTMLElement>()
+const canvasRef = useTemplateRef<HTMLElement>('canvasRef')
 const { dragViewport, viewportStyles } = useViewportSize(canvasRef)
 
-useDropImageOrText(canvasRef)
+useDrop(canvasRef)
 
 const { mouseSelection, mouseSelectionVisible, mouseSelectionQuadrant, updateMouseSelection } = useMouseSelection(elementList, viewportRef)
 

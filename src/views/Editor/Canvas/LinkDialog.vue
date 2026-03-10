@@ -8,9 +8,11 @@
 
     <Input 
       class="input"
+      ref="inputRef"
       v-if="type === 'web'" 
       v-model:value="address" 
       placeholder="请输入网页链接地址"
+      @enter="save()"
     />
 
     <Select 
@@ -33,7 +35,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, useTemplateRef, nextTick, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
 import type { ElementLinkType, PPTElementLink } from '@/types/slides'
@@ -54,12 +56,14 @@ const emit = defineEmits<{
   (event: 'close'): void
 }>()
 
-const { handleElement } = storeToRefs(useMainStore())
+const mainStore = useMainStore()
+const { handleElement } = storeToRefs(mainStore)
 const { slides, currentSlide } = storeToRefs(useSlidesStore())
 
 const type = ref<ElementLinkType>('web')
 const address = ref('')
 const slideId = ref('')
+const inputRef = useTemplateRef<InstanceType<typeof Input>>('inputRef')
 
 const slideOptions = computed(() => {
   return slides.value.map((item, index) => ({
@@ -77,20 +81,31 @@ const selectedSlide = computed(() => {
   return slides.value.find(item => item.id === slideId.value) || null
 })
 
-const tabs: TabItem[] = [
+const tabs = computed<TabItem[]>(() => [
   { key: 'web', label: '网页链接' },
-  { key: 'slide', label: '幻灯片页面' },
-]
+  { key: 'slide', label: '幻灯片页面', disabled: slides.value.length <= 1 },
+])
 
 const { setLink } = useLink()
 
 onMounted(() => {
+  mainStore.setDisableHotkeysState(true)
+
   if (handleElement.value?.link) {
     if (handleElement.value.link.type === 'web') address.value = handleElement.value.link.target
     else if (handleElement.value.link.type === 'slide') slideId.value = handleElement.value.link.target
 
     type.value = handleElement.value.link.type
   }
+  if (type.value === 'web') {
+    nextTick(() => {
+      inputRef.value!.focus()
+    })
+  }
+})
+
+onUnmounted(() => {
+  mainStore.setDisableHotkeysState(false)
 })
 
 const save = () => {

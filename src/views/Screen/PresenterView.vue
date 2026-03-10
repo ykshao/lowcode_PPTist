@@ -1,17 +1,17 @@
 <template>
   <div class="presenter-view">
     <div class="toolbar">
-      <div class="tool-btn" @click="changeViewMode('base')"><IconListView class="tool-icon" /><span>普通视图</span></div>
-      <div class="tool-btn" :class="{ 'active': writingBoardToolVisible }" @click="writingBoardToolVisible = !writingBoardToolVisible"><IconWrite class="tool-icon" /><span>画笔</span></div>
-      <div class="tool-btn" :class="{ 'active': laserPen }" @click="laserPen = !laserPen"><IconMagic class="tool-icon" /><span>激光笔</span></div>
-      <div class="tool-btn" :class="{ 'active': timerlVisible }" @click="timerlVisible = !timerlVisible"><IconStopwatchStart class="tool-icon" /><span>计时器</span></div>
+      <div class="tool-btn" @click="changeViewMode('base')"><i-icon-park-outline:list-view class="tool-icon" /><span>普通视图</span></div>
+      <div class="tool-btn" :class="{ 'active': writingBoardToolVisible }" @click="writingBoardToolVisible = !writingBoardToolVisible"><i-icon-park-outline:write class="tool-icon" /><span>画笔</span></div>
+      <div class="tool-btn" :class="{ 'active': laserPen }" @click="laserPen = !laserPen"><i-icon-park-outline:magic class="tool-icon" /><span>激光笔</span></div>
+      <div class="tool-btn" :class="{ 'active': timerlVisible }" @click="timerlVisible = !timerlVisible"><i-icon-park-outline:stopwatch-start class="tool-icon" /><span>计时器</span></div>
       <div class="tool-btn" @click="() => fullscreenState ? manualExitFullscreen() : enterFullscreen()">
-        <IconOffScreenOne class="tool-icon" v-if="fullscreenState" />
-        <IconOffScreenOne class="tool-icon" v-else />
+        <i-icon-park-outline:off-screen-one class="tool-icon" v-if="fullscreenState" />
+        <i-icon-park-outline:full-screen-one class="tool-icon" v-else />
         <span>{{ fullscreenState ? '退出全屏' : '全屏' }}</span>
       </div>
       <Divider class="divider" />
-      <div class="tool-btn" @click="exitScreening()"><IconPower class="tool-icon" /><span>结束放映</span></div>
+      <div class="tool-btn" @click="exitScreening()"><i-icon-park-outline:power class="tool-icon" /><span>结束放映</span></div>
     </div>
 
     <div class="content">
@@ -26,9 +26,9 @@
           :animationIndex="animationIndex"
           :turnSlideToId="turnSlideToId"
           :manualExitFullscreen="manualExitFullscreen"
-          @wheel="$event => mousewheelListener($event)"
-          @touchstart="$event => touchStartListener($event)"
-          @touchend="$event => touchEndListener($event)"
+          @wheel="($event: WheelEvent) => mousewheelListener($event)"
+          @touchstart="($event: TouchEvent) => touchStartListener($event)"
+          @touchend="($event: TouchEvent) => touchEndListener($event)"
           v-contextmenu="contextmenus"
         />
         <WritingBoardTool 
@@ -67,17 +67,17 @@
         <span>演讲者备注</span>
         <span>P {{slideIndex + 1}} / {{slides.length}}</span>
       </div>
-      <div class="remark-content ProseMirror-static" :style="{ fontSize: remarkFontSize + 'px' }" v-html="currentSlideRemark"></div>
+      <div class="remark-content ProseMirror-static" :class="{ 'empty': !currentSlideRemark }" :style="{ fontSize: remarkFontSize + 'px' }" v-html="currentSlideRemark || '无备注'"></div>
       <div class="remark-scale">
-        <div :class="['scale-btn', { 'disable': remarkFontSize === 12 }]" @click="setRemarkFontSize(remarkFontSize - 2)"><IconMinus /></div>
-        <div :class="['scale-btn', { 'disable': remarkFontSize === 40 }]" @click="setRemarkFontSize(remarkFontSize + 2)"><IconPlus /></div>
+        <div :class="['scale-btn', { 'disable': remarkFontSize === 12 }]" @click="setRemarkFontSize(remarkFontSize - 2)"><i-icon-park-outline:minus class="icon" /></div>
+        <div :class="['scale-btn', { 'disable': remarkFontSize === 40 }]" @click="setRemarkFontSize(remarkFontSize + 2)"><i-icon-park-outline:plus class="icon" /></div>
       </div>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
 import type { ContextmenuItem } from '@/components/Contextmenu/types'
@@ -101,8 +101,8 @@ const props = defineProps<{
 
 const { slides, slideIndex, viewportRatio, currentSlide } = storeToRefs(useSlidesStore())
 
-const slideListWrapRef = ref<HTMLElement>()
-const thumbnailsRef = ref<HTMLElement>()
+const slideListWrapRef = useTemplateRef<HTMLElement>('slideListWrapRef')
+const thumbnailsRef = useTemplateRef<HTMLElement>('thumbnailsRef')
 const writingBoardToolVisible = ref(false)
 const timerlVisible = ref(false)
 const laserPen = ref(false)
@@ -125,7 +125,8 @@ const { fullscreenState, manualExitFullscreen } = useFullscreen()
 
 const remarkFontSize = ref(16)
 const currentSlideRemark = computed(() => {
-  return parseText2Paragraphs(currentSlide.value.remark || '无备注')
+  if (!currentSlide.value.remark) return ''
+  return parseText2Paragraphs(currentSlide.value.remark)
 })
 
 const handleMousewheelThumbnails = (e: WheelEvent) => {
@@ -146,7 +147,7 @@ watch(slideIndex, () => {
     if (!activeThumbnailRef) return
 
     const width = thumbnailsRef.value.offsetWidth
-    const offsetLeft = activeThumbnailRef.offsetLeft
+    const offsetLeft = activeThumbnailRef.offsetLeft + activeThumbnailRef.clientWidth / 2
     thumbnailsRef.value.scrollTo({ left: offsetLeft - width / 2, behavior: 'smooth' })
   })
 })
@@ -256,6 +257,7 @@ const contextmenus = (): ContextmenuItem[] => {
   overflow-x: auto;
   overflow-y: hidden;
   border-top: solid 1px #3a3a3a;
+  position: relative;
 }
 .thumbnail {
   display: inline-block;
@@ -297,6 +299,11 @@ const contextmenus = (): ContextmenuItem[] => {
     padding: 20px;
     line-height: 1.5;
     @include overflow-overlay();
+
+    &.empty {
+      color: #999;
+      font-style: italic;
+    }
   }
 
   .remark-scale {

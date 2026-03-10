@@ -18,6 +18,8 @@ export const enum ShapePathFormulasKeys {
   TRAPEZOID = 'trapezoid',
   BULLET = 'bullet',
   INDICATOR = 'indicator',
+  DONUT = 'donut',
+  DIAGSTRIPE = 'diagStripe',
 }
 
 export const enum ElementTypes {
@@ -52,6 +54,8 @@ export interface Gradient {
   rotate: number
 }
 
+export type LineStyleType = 'solid' | 'dashed' | 'dotted'
+
 /**
  * 元素阴影
  * 
@@ -80,7 +84,7 @@ export interface PPTElementShadow {
  * color?: 边框颜色
  */
 export interface PPTElementOutline {
-  style?: 'dashed' | 'solid' | 'dotted'
+  style?: LineStyleType
   width?: number
   color?: string
 }
@@ -137,6 +141,8 @@ interface PPTBaseElement {
 }
 
 
+export type TextType = 'title' | 'subtitle' | 'content' | 'item' | 'itemTitle' | 'notes' | 'header' | 'footer' | 'partNumber' | 'itemNumber'
+
 /**
  * 文本元素
  * 
@@ -163,6 +169,8 @@ interface PPTBaseElement {
  * paragraphSpace?: 段间距，默认 5px
  * 
  * vertical?: 竖向文本
+ * 
+ * textType?: 文本类型
  */
 export interface PPTTextElement extends PPTBaseElement {
   type: 'text'
@@ -177,6 +185,7 @@ export interface PPTTextElement extends PPTBaseElement {
   shadow?: PPTElementShadow
   paragraphSpace?: number
   vertical?: boolean
+  textType?: TextType
 }
 
 
@@ -238,6 +247,8 @@ export interface ImageElementClip {
   shape: string
 }
 
+export type ImageType = 'pageFigure' | 'itemFigure' | 'background'
+
 /**
  * 图片元素
  * 
@@ -262,6 +273,8 @@ export interface ImageElementClip {
  * radius?: 圆角半径
  * 
  * colorMask?: 颜色蒙版
+ * 
+ * imageType?: 图片类型
  */
 export interface PPTImageElement extends PPTBaseElement {
   type: 'image'
@@ -275,6 +288,7 @@ export interface PPTImageElement extends PPTBaseElement {
   shadow?: PPTElementShadow
   radius?: number
   colorMask?: string
+  imageType?: ImageType
 }
 
 export type ShapeTextAlign = 'top' | 'middle' | 'bottom' 
@@ -289,12 +303,24 @@ export type ShapeTextAlign = 'top' | 'middle' | 'bottom'
  * defaultColor: 默认颜色（会被文本内容中的HTML内联样式覆盖）
  * 
  * align: 文本对齐方向（垂直方向）
+ * 
+ * lineHeight?: 行高（倍），默认1.5
+ * 
+ * wordSpace?: 字间距，默认0
+ * 
+ * paragraphSpace?: 段间距，默认 5px
+ * 
+ * type: 文本类型
  */
 export interface ShapeText {
   content: string
   defaultFontName: string
   defaultColor: string
   align: ShapeTextAlign
+  lineHeight?: number
+  wordSpace?: number
+  paragraphSpace?: number
+  type?: TextType
 }
 
 /**
@@ -311,6 +337,8 @@ export interface ShapeText {
  * fill: 填充，不存在渐变时生效
  * 
  * gradient?: 渐变，该属性存在时将优先作为填充
+ * 
+ * pattern?: 图案，该属性存在时将优先作为填充
  * 
  * outline?: 边框
  * 
@@ -339,6 +367,7 @@ export interface PPTShapeElement extends PPTBaseElement {
   fixedRatio: boolean
   fill: string
   gradient?: Gradient
+  pattern?: string
   outline?: PPTElementOutline
   opacity?: number
   flipH?: boolean
@@ -382,7 +411,7 @@ export interface PPTLineElement extends Omit<PPTBaseElement, 'height' | 'rotate'
   type: 'line'
   start: [number, number]
   end: [number, number]
-  style: 'solid' | 'dashed' | 'dotted'
+  style: LineStyleType
   color: string
   points: [LinePoint, LinePoint]
   shadow?: PPTElementShadow
@@ -423,7 +452,9 @@ export interface ChartData {
  * 
  * themeColors: 主题色
  * 
- * textColor?: 文字颜色
+ * textColor?: 坐标和文字颜色
+ * 
+ * lineColor?: 网格颜色
  */
 export interface PPTChartElement extends PPTBaseElement {
   type: 'chart'
@@ -434,6 +465,7 @@ export interface PPTChartElement extends PPTBaseElement {
   outline?: PPTElementOutline
   themeColors: string[]
   textColor?: string
+  lineColor?: string
 }
 
 
@@ -523,7 +555,7 @@ export interface TableTheme {
  * 
  * theme?: 主题
  * 
- * colWidths: 列宽数组，如[30, 50, 20]表示三列宽度分别为30%, 50%, 20%
+ * colWidths: 列宽数组，如[0.3, 0.5, 0.2]表示三列宽度分别占总宽度的30%, 50%, 20%
  * 
  * cellMinHeight: 单元格最小高度
  * 
@@ -693,6 +725,8 @@ export interface SectionTag {
   title?: string
 }
 
+export type SlideType = 'cover' | 'contents' | 'transition' | 'content' | 'end'
+
 /**
  * 幻灯片页面
  * 
@@ -700,7 +734,7 @@ export interface SectionTag {
  * 
  * elements: 元素集合
  * 
- * notes: 批注
+ * notes?: 批注
  * 
  * remark?: 备注
  * 
@@ -709,6 +743,8 @@ export interface SectionTag {
  * animations?: 元素动画集合
  * 
  * turningMode?: 翻页方式
+ * 
+ * slideType?: 页面类型
  */
 export interface Slide {
   id: string
@@ -719,6 +755,7 @@ export interface Slide {
   animations?: PPTAnimation[]
   turningMode?: TurningMode
   sectionTag?: SectionTag
+  type?: SlideType
 }
 
 /**
@@ -734,9 +771,16 @@ export interface Slide {
  */
 export interface SlideTheme {
   backgroundColor: string
-  themeColor: string
+  themeColors: string[]
   fontColor: string
   fontName: string
   outline: PPTElementOutline
   shadow: PPTElementShadow
+}
+
+export interface SlideTemplate {
+  name: string
+  id: string
+  cover: string
+  origin?: string
 }

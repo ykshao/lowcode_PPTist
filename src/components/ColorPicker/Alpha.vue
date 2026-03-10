@@ -8,6 +8,7 @@
       class="alpha-container" 
       ref="alphaRef"
       @mousedown="$event => handleMouseDown($event)"
+      @touchstart="$event => handleMouseDown($event)"
     >
       <div class="alpha-pointer" :style="{ left: color.a * 100 + '%' }">
         <div class="alpha-picker"></div>
@@ -17,7 +18,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, useTemplateRef } from 'vue'
 
 import Checkboard from './Checkboard.vue'
 import type { ColorFormats } from 'tinycolor2'
@@ -37,13 +38,19 @@ const gradientColor = computed(() => {
   return `linear-gradient(to right, rgba(${rgbaStr}, 0) 0%, rgba(${rgbaStr}, 1) 100%)`
 })
 
-const alphaRef = ref<HTMLElement>()
-const handleChange = (e: MouseEvent) => {
+const alphaRef = useTemplateRef<HTMLElement>('alphaRef')
+const handleChange = (e: MouseEvent | TouchEvent) => {
   e.preventDefault()
   if (!alphaRef.value) return
+  
+  const isTouchEvent = !(e instanceof MouseEvent)
+  if (isTouchEvent && (!e.changedTouches || !e.changedTouches[0])) return
+
+  const startPageX = isTouchEvent ? e.changedTouches[0].pageX : e.pageX
+
   const containerWidth = alphaRef.value.clientWidth
   const xOffset = alphaRef.value.getBoundingClientRect().left + window.pageXOffset
-  const left = e.pageX - xOffset
+  const left = startPageX - xOffset
   let a
 
   if (left < 0) a = 0
@@ -62,12 +69,16 @@ const handleChange = (e: MouseEvent) => {
 
 const unbindEventListeners = () => {
   window.removeEventListener('mousemove', handleChange)
+  window.removeEventListener('touchmove', handleChange)
   window.removeEventListener('mouseup', unbindEventListeners)
+  window.removeEventListener('touchend', unbindEventListeners)
 }
-const handleMouseDown = (e: MouseEvent) => {
+const handleMouseDown = (e: MouseEvent | TouchEvent) => {
   handleChange(e)
   window.addEventListener('mousemove', handleChange)
+  window.addEventListener('touchmove', handleChange)
   window.addEventListener('mouseup', unbindEventListeners)
+  window.addEventListener('touchend', unbindEventListeners)
 }
 onUnmounted(unbindEventListeners)
 </script>

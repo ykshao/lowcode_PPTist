@@ -36,9 +36,15 @@
           :width="elementInfo.width"
           :height="elementInfo.height"
         >
-          <defs v-if="elementInfo.gradient">
+          <defs>
+            <PatternDefs
+              v-if="elementInfo.pattern"
+              :id="`editable-pattern-${elementInfo.id}`" 
+              :src="elementInfo.pattern"
+            />
             <GradientDefs
-              :id="`editabel-gradient-${elementInfo.id}`" 
+              v-else-if="elementInfo.gradient"
+              :id="`editable-gradient-${elementInfo.id}`" 
               :type="elementInfo.gradient.type"
               :colors="elementInfo.gradient.colors"
               :rotate="elementInfo.gradient.rotate"
@@ -53,7 +59,7 @@
               stroke-linecap="butt" 
               stroke-miterlimit="8"
               :d="elementInfo.path" 
-              :fill="elementInfo.gradient ? `url(#editabel-gradient-${elementInfo.id})` : elementInfo.fill"
+              :fill="fill"
               :stroke="outlineColor"
               :stroke-width="outlineWidth" 
               :stroke-dasharray="strokeDashArray" 
@@ -61,7 +67,14 @@
           </g>
         </svg>
 
-        <div class="shape-text" :class="[text.align, { 'editable': editable || text.content }]">
+        <div class="shape-text" 
+          :class="[text.align, { 'editable': editable || text.content }]"
+          :style="{
+            lineHeight: text.lineHeight,
+            letterSpacing: (text.wordSpace || 0) + 'px',
+            '--paragraphSpace': `${text.paragraphSpace === undefined ? 5 : text.paragraphSpace}px`,
+          }"
+        >
           <ProsemirrorEditor
             ref="prosemirrorEditorRef"
             v-if="editable || text.content"
@@ -81,7 +94,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
 import type { PPTShapeElement, ShapeText } from '@/types/slides'
@@ -89,9 +102,11 @@ import type { ContextmenuItem } from '@/components/Contextmenu/types'
 import useElementOutline from '@/views/components/element/hooks/useElementOutline'
 import useElementShadow from '@/views/components/element/hooks/useElementShadow'
 import useElementFlip from '@/views/components/element/hooks/useElementFlip'
+import useElementFill from '@/views/components/element/hooks/useElementFill'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 
 import GradientDefs from './GradientDefs.vue'
+import PatternDefs from './PatternDefs.vue'
 import ProsemirrorEditor from '@/views/components/element/ProsemirrorEditor.vue'
 
 const props = defineProps<{
@@ -102,6 +117,7 @@ const props = defineProps<{
 
 const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
+const { theme } = storeToRefs(slidesStore)
 const { handleElementId, shapeFormatPainter } = storeToRefs(mainStore)
 
 const { addHistorySnapshot } = useHistorySnapshot()
@@ -126,6 +142,9 @@ const execFormatPainter = () => {
   if (!keep) mainStore.setShapeFormatPainter(null)
 }
 
+const element = computed(() => props.elementInfo)
+const { fill } = useElementFill(element, 'editable')
+
 const outline = computed(() => props.elementInfo.outline)
 const { outlineWidth, outlineColor, strokeDashArray } = useElementOutline(outline)
 
@@ -147,9 +166,9 @@ watch(handleElementId, () => {
 const text = computed<ShapeText>(() => {
   const defaultText: ShapeText = {
     content: '',
-    defaultFontName: '微软雅黑',
-    defaultColor: '#000',
     align: 'middle',
+    defaultFontName: theme.value.fontName,
+    defaultColor: theme.value.fontColor,
   }
   if (!props.elementInfo.text) return defaultText
 
@@ -176,7 +195,7 @@ const checkEmptyText = () => {
   }
 }
 
-const prosemirrorEditorRef = ref<InstanceType<typeof ProsemirrorEditor>>()
+const prosemirrorEditorRef = useTemplateRef<InstanceType<typeof ProsemirrorEditor>>('prosemirrorEditorRef')
 const startEdit = () => {
   editable.value = true
   nextTick(() => prosemirrorEditorRef.value && prosemirrorEditorRef.value.focus())
@@ -187,6 +206,7 @@ const startEdit = () => {
 .editable-element-shape {
   position: absolute;
   pointer-events: none;
+  background-size: contain;
 
   &.lock .element-content {
     cursor: default;
@@ -203,11 +223,13 @@ const startEdit = () => {
   width: 100%;
   height: 100%;
   position: relative;
+  font-family: $textElementFont;
   cursor: move;
 
   svg {
     transform-origin: 0 0;
     overflow: visible;
+    display: block;
   }
 
   .shape-path {
@@ -215,17 +237,13 @@ const startEdit = () => {
   }
 }
 .shape-text {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
   display: flex;
   flex-direction: column;
   padding: 10px;
-  line-height: 1.2;
+  line-height: 1.5;
   word-break: break-word;
   pointer-events: none;
+  @include absolute-0();
 
   &.editable {
     pointer-events: all;

@@ -12,7 +12,7 @@
       :style="{ transform: `rotate(${elementInfo.rotate}deg)` }"
     >
       <div class="element-content">
-        <IconVolumeNotice 
+        <i-icon-park-outline:volume-notice 
           class="audio-icon" 
           :style="{
             fontSize: audioIconSize,
@@ -36,7 +36,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, inject, ref } from 'vue'
+import { computed, inject, ref, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
 import type { PPTAudioElement } from '@/types/slides'
@@ -82,7 +82,7 @@ const audioPlayerPosition = computed(() => {
   }
 })
 
-const audioPlayerRef = ref<InstanceType<typeof AudioPlayer>>()
+const audioPlayerRef = useTemplateRef<InstanceType<typeof AudioPlayer>>('audioPlayerRef')
 const toggle = () => {
   if (!audioPlayerRef.value) return
   audioPlayerRef.value.toggle()
